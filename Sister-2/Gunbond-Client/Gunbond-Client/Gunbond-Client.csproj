@@ -109,6 +109,7 @@
   <ItemGroup>
     <Compile Include="GunConsole.cs" />
     <Compile Include="Model\Message.cs" />
+    <Compile Include="Model\Peer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Game1.cs" />

@@ -126,21 +126,24 @@ namespace Gunbond_Client
                 conf.maxTimeout = 30000;
                 conf.port = 9351;
                 conf.listenPort = 9757;
-
-                XmlWriter writer = XmlWriter.Create(xml);
-                writer.WriteStartDocument();
-                writer.WriteStartElement("Config");
-                writer.WriteElementString("tracker_address", conf.trackerAddress);
-                writer.WriteElementString("max_timeout", conf.maxTimeout.ToString());
-                writer.WriteElementString("port", conf.port.ToString());
-                writer.WriteElementString("listen_port", conf.listenPort.ToString());
-
-                writer.WriteEndElement();
-                writer.WriteEndDocument();
-
-                writer.Flush();
-                writer.Close();
+                this.SaveData(xml);
             }
+        }
+        private void SaveData(String xml)
+        {
+            XmlWriter writer = XmlWriter.Create(xml);
+            writer.WriteStartDocument();
+            writer.WriteStartElement("Config");
+            writer.WriteElementString("tracker_address", conf.trackerAddress);
+            writer.WriteElementString("max_timeout", conf.maxTimeout.ToString());
+            writer.WriteElementString("port", conf.port.ToString());
+            writer.WriteElementString("listen_port", conf.listenPort.ToString());
+
+            writer.WriteEndElement();
+            writer.WriteEndDocument();
+
+            writer.Flush();
+            writer.Close();
         }
         #endregion
     }

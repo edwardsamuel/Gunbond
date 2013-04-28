@@ -359,6 +359,45 @@ namespace SocketLibrary
             return m;
         }
 
+        public static Message CreateMessageGame(int x, int y, int power)
+        {
+            byte[] data = new byte[24];
+            FillHeader(data);
+            //data[0] = (byte)'G';
+            //data[1] = (byte)'U';
+            //data[2] = (byte)'N';
+            //data[3] = (byte)'B';
+            //data[4] = (byte)'O';
+            //data[5] = (byte)'N';
+            //data[6] = (byte)'D';
+            //data[7] = (byte)'G';
+            //data[8] = (byte)'A';
+            //data[9] = (byte)'M';
+            //data[10] = (byte)'E';
+            //data[11..14] for x position
+            byte[] temp = ConvertIntToByte(x);
+            data[11] = temp[0];
+            data[12] = temp[1];
+            data[13] = temp[2];
+            data[14] = temp[3];
+            //data[15..18] for y position
+            byte[] temp2 = ConvertIntToByte(y);
+            data[15] = temp2[0];
+            data[16] = temp2[1];
+            data[17] = temp2[2];
+            data[18] = temp2[3];
+            //data[19..22] for power
+            byte[] temp3 = ConvertIntToByte(power);
+            data[19] = temp3[0];
+            data[20] = temp3[1];
+            data[21] = temp3[2];
+            data[22] = temp3[3];
+
+            Message m = new Message();
+            m.data = data;
+            return m;
+        }
+
         public void GetHandshakeTracker(out int peerId)
         {
             byte[] d = new byte[4];
@@ -507,6 +546,29 @@ namespace SocketLibrary
             d[2] = data[22];
             d[3] = data[23];
             peerID = ConvertBytesToInt(d);
+        }
+
+        public void GetMessageGame(out int x, out int y, out int power)
+        {
+            byte[] d = new byte[4];
+            //d[11..14] for x position
+            d[0] = data[11];
+            d[1] = data[12];
+            d[2] = data[13];
+            d[3] = data[14];
+            x = ConvertBytesToInt(d);
+            //d[15..18] for y position
+            d[0] = data[15];
+            d[1] = data[16];
+            d[2] = data[17];
+            d[3] = data[18];
+            y = ConvertBytesToInt(d);   
+            //d[19..22] for power
+            d[0] = data[19];
+            d[1] = data[20];
+            d[2] = data[21];
+            d[3] = data[22];
+            power = ConvertBytesToInt(d);
         }
 
         public MessageType GetMessageType()

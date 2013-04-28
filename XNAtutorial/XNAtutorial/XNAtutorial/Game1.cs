@@ -34,6 +34,7 @@ namespace GunbondTheGame
         Texture2D cannonTexture;
         Texture2D rocketTexture;
         Texture2D smokeTexture;
+        Texture2D groundTexture;
         int screenWidth;
         int screenHeight;
         float playerScaling;
@@ -57,6 +58,12 @@ namespace GunbondTheGame
         // terrain:
         int[] terrainContour;
 
+        // color arrays:
+        Color[,] rocketColorArray;
+        Color[,] foregroundColorArray;
+        Color[,] carriageColorArray;
+        Color[,] cannonColorArray;        
+
         public Game1()
         {
             graphics = new GraphicsDeviceManager(this);
@@ -78,7 +85,7 @@ namespace GunbondTheGame
 
             graphics.IsFullScreen = false;
             graphics.ApplyChanges();
-            Window.Title = "riemer's 2D XNA Tutorial";
+            Window.Title = "Gunbond";
             base.Initialize();
         }
 
@@ -104,24 +111,10 @@ namespace GunbondTheGame
                 players[i].Color = playerColors[i];
                 players[i].Angle = MathHelper.ToRadians(90);
                 players[i].Power = 100;
+                players[i].Position = new Vector2();
+                players[i].Position.X = screenWidth / (numberOfPlayers + 1) * (i + 1);
+                players[i].Position.Y = terrainContour[(int)players[i].Position.X];
             }
-
-            players[0].Position = new Vector2(100, 193);
-            players[1].Position = new Vector2(200, 212);
-            players[2].Position = new Vector2(300, 361);
-            players[3].Position = new Vector2(400, 164);
-        }
-
-        private void GenerateTerrainContour()
-            // initializes array of coordinates and fills it with values
-        {
-            terrainContour = new int[screenWidth];
-
-            for (int x = 0; x < screenWidth; x++)
-            {
-                terrainContour[x] = screenHeight / 2;
-            }
-        
         }
 
         /// <summary>
@@ -138,12 +131,10 @@ namespace GunbondTheGame
             backgroundTexture = Content.Load<Texture2D>("background");
 
             // linking variable foregroundTexture to an img named "foreground"
-            foregroundTexture = Content.Load<Texture2D>("foreground");
+            // foregroundTexture = Content.Load<Texture2D>("foreground");
 
             screenHeight = device.PresentationParameters.BackBufferHeight;
             screenWidth = device.PresentationParameters.BackBufferWidth;
-
-            SetUpPlayers();
 
             carriageTexture = Content.Load<Texture2D>("carriage");
             cannonTexture = Content.Load<Texture2D>("cannon");
@@ -154,7 +145,202 @@ namespace GunbondTheGame
 
             rocketTexture = Content.Load<Texture2D>("rocket");
             smokeTexture = Content.Load<Texture2D>("smoke");
+            groundTexture = Content.Load<Texture2D>("ground");
+
+            GenerateTerrainContour();
+            SetUpPlayers();
+            FlattenTerrainBelowPlayers();
+            CreateForeground();
+
+            rocketColorArray = TextureTo2DArray(rocketTexture);
+            carriageColorArray = TextureTo2DArray(carriageTexture);
+            cannonColorArray = TextureTo2DArray(cannonTexture);
             // TODO: use this.Content to load your game content here
+        }
+
+        private void FlattenTerrainBelowPlayers()
+        {
+            foreach (PlayerData player in players)
+                if (player.IsAlive)
+                    for (int x = 0; x < 40; x++)
+                        terrainContour[(int)player.Position.X + x] = terrainContour[(int)player.Position.X];
+        }
+
+        private void GenerateTerrainContour()
+            // initializes array of coordinates and fills it with values
+        {
+            terrainContour = new int[screenWidth];
+
+            double rand1 = randomizer.NextDouble() + 1;
+            double rand2 = randomizer.NextDouble() + 2;
+            double rand3 = randomizer.NextDouble() + 3;
+
+            float offset = screenHeight / 2;
+            float peakheight = 100;
+            float flatness = 70;
+
+            for (int x = 0; x < screenWidth; x++)
+            {
+                double height = peakheight / rand1 * Math.Sin((float)x / flatness * rand1 + rand1);
+                height += peakheight / rand2 * Math.Sin((float)x / flatness * rand2 + rand2);
+                height += peakheight / rand3 * Math.Sin((float)x / flatness * rand3 + rand3);
+                height += offset;
+                terrainContour[x] = (int)height;
+            }
+        }
+
+
+        private void CreateForeground()
+        {
+            Color[] foregroundColors = new Color[screenWidth * screenHeight];
+            Color[,] groundColors = TextureTo2DArray(groundTexture);
+
+            for (int x = 0; x < screenWidth; x++)
+            {
+                for (int y = 0; y < screenHeight; y++)
+                {
+                    if (y > terrainContour[x])
+                        foregroundColors[x + y * screenWidth] = groundColors[x % groundTexture.Width, y % groundTexture.Height];
+                    else
+                        foregroundColors[x + y * screenWidth] = Color.Transparent;
+                }
+            }
+
+            foregroundTexture = new Texture2D(device, screenWidth, screenHeight, false, SurfaceFormat.Color);
+            foregroundTexture.SetData(foregroundColors);
+            foregroundColorArray = TextureTo2DArray(foregroundTexture);
+        }
+
+        private Color[,] TextureTo2DArray(Texture2D texture)
+        {
+            Color[] colors1D = new Color[texture.Width * texture.Height];
+            texture.GetData(colors1D);
+            Color[,] colors2D = new Color[texture.Width, texture.Height];
+            for (int x = 0; x < texture.Width; x++)
+                for (int y = 0; y < texture.Height; y++)
+                    colors2D[x, y] = colors1D[x + y * texture.Width];
+
+            return colors2D;
+        }
+
+        private Vector2 TexturesCollide(Color[,] tex1, Matrix mat1, Color[,] tex2, Matrix mat2)
+        {
+            Matrix mat1to2 = mat1 * Matrix.Invert(mat2);
+            int width1 = tex1.GetLength(0);
+            int height1 = tex1.GetLength(1);
+            int width2 = tex2.GetLength(0);
+            int height2 = tex2.GetLength(1);
+
+            for (int x1 = 0; x1 < width1; x1++)
+            {
+                for (int y1 = 0; y1 < height1; y1++)
+                {
+                    Vector2 pos1 = new Vector2(x1, y1);
+                    Vector2 pos2 = Vector2.Transform(pos1, mat1to2);
+
+                    int x2 = (int)pos2.X;
+                    int y2 = (int)pos2.Y;
+                    if ((x2 >= 0) && (x2 < width2))
+                    {
+                        if ((y2 >= 0) && (y2 < height2))
+                        {
+                            if (tex1[x1, y1].A > 0)
+                            {
+                                if (tex2[x2, y2].A > 0)
+                                {
+                                    Vector2 screenPos = Vector2.Transform(pos1, mat1);
+                                    return screenPos;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return new Vector2(-1, -1);
+        }
+
+        private Vector2 CheckTerrainCollision()
+        {
+            Matrix rocketMat = Matrix.CreateTranslation(-42, -240, 0) * Matrix.CreateRotationZ(rocketAngle) * Matrix.CreateScale(rocketScaling) * Matrix.CreateTranslation(rocketPosition.X, rocketPosition.Y, 0);
+            Matrix terrainMat = Matrix.Identity;
+            Vector2 terrainCollisionPoint = TexturesCollide(rocketColorArray, rocketMat, foregroundColorArray, terrainMat);
+            return terrainCollisionPoint;
+        }
+
+        private Vector2 CheckPlayersCollision()
+        {
+            Matrix rocketMat = Matrix.CreateTranslation(-42, -240, 0) * Matrix.CreateRotationZ(rocketAngle) * Matrix.CreateScale(rocketScaling) * Matrix.CreateTranslation(rocketPosition.X, rocketPosition.Y, 0);
+            for (int i = 0; i < numberOfPlayers; i++)
+            {
+                PlayerData player = players[i];
+                if (player.IsAlive)
+                {
+                    if (i != currentPlayer)
+                    {
+                        int xPos = (int)player.Position.X;
+                        int yPos = (int)player.Position.Y;
+
+                        Matrix carriageMat = Matrix.CreateTranslation(0, -carriageTexture.Height, 0) * Matrix.CreateScale(playerScaling) * Matrix.CreateTranslation(xPos, yPos, 0);
+                        Vector2 carriageCollisionPoint = TexturesCollide(carriageColorArray, carriageMat, rocketColorArray, rocketMat);                        
+                        if (carriageCollisionPoint.X > -1)
+                        {
+                            players[i].IsAlive = false;
+                            return carriageCollisionPoint;
+                        }
+
+                        Matrix cannonMat = Matrix.CreateTranslation(-11, -50, 0) * Matrix.CreateRotationZ(player.Angle) * Matrix.CreateScale(playerScaling) * Matrix.CreateTranslation(xPos + 20, yPos - 10, 0);
+                        Vector2 cannonCollisionPoint = TexturesCollide(cannonColorArray, cannonMat, rocketColorArray, rocketMat);
+                        if (cannonCollisionPoint.X > -1)
+                        {
+                            players[i].IsAlive = false;
+                            return cannonCollisionPoint;
+                        }
+                    }
+                }
+            }
+            return new Vector2(-1, -1);
+        }
+
+        private bool CheckOutOfScreen()
+        // check whether the rocket is still inside the window
+        {
+            bool rocketOutOfScreen = rocketPosition.Y > screenHeight;
+            rocketOutOfScreen |= rocketPosition.X < 0;
+            rocketOutOfScreen |= rocketPosition.X > screenWidth;
+
+            return rocketOutOfScreen;
+        }
+
+        private void CheckCollisions(GameTime gameTime)
+        {
+            Vector2 terrainCollisionPoint = CheckTerrainCollision();
+            Vector2 playerCollisionPoint = CheckPlayersCollision();
+            bool rocketOutOfScreen = CheckOutOfScreen();
+
+            if (playerCollisionPoint.X > -1)
+            {
+                rocketFlying = false;
+
+                smokeList = new List<Vector2>();
+                NextPlayer();
+            }
+
+            if (terrainCollisionPoint.X > -1)
+            {
+                rocketFlying = false;
+
+                smokeList = new List<Vector2>();
+                NextPlayer();
+            }
+
+            if (rocketOutOfScreen)
+            {
+                rocketFlying = false;
+
+                smokeList = new List<Vector2>();
+                NextPlayer();
+            }
         }
 
         /// <summary>
@@ -179,7 +365,11 @@ namespace GunbondTheGame
 
             // TODO: Add your update logic here
             ProcessKeyboard();
-            UpdateRocket();
+            if (rocketFlying)
+            {
+                UpdateRocket();
+                CheckCollisions(gameTime);
+            }
             base.Update(gameTime);
         }
 
@@ -202,6 +392,15 @@ namespace GunbondTheGame
                     smokeList.Add(smokePos);
                 }
             }
+        }
+
+        private void NextPlayer()
+        // increment the currentPlayer value
+        {
+            currentPlayer = currentPlayer + 1;
+            currentPlayer = currentPlayer % numberOfPlayers;
+            while (!players[currentPlayer].IsAlive)
+                currentPlayer = ++currentPlayer % numberOfPlayers;
         }
 
         /// <summary>

@@ -193,7 +193,6 @@ namespace Gunbond_Client.Util
         // Exceptions:
         //   System.IO.IOException:
         //     An I/O error occurred.
-        [CLSCompliant(false)]
         public static void Write(uint value)
         {
             if (Active) Console.Write(value);
@@ -211,7 +210,6 @@ namespace Gunbond_Client.Util
         // Exceptions:
         //   System.IO.IOException:
         //     An I/O error occurred.
-        [CLSCompliant(false)]
         public static void Write(ulong value)
         {
             if (Active) Console.Write(value);
@@ -393,7 +391,6 @@ namespace Gunbond_Client.Util
         //
         //   System.FormatException:
         //     The format specification in format is invalid.
-        [CLSCompliant(false)]
         public static void Write(string format, object arg0, object arg1, object arg2, object arg3)
         {
             if (Active) Console.Write(format, arg0, arg1, arg2, arg3);
@@ -594,7 +591,6 @@ namespace Gunbond_Client.Util
         // Exceptions:
         //   System.IO.IOException:
         //     An I/O error occurred.
-        [CLSCompliant(false)]
         public static void WriteLine(uint value)
         {
             if (Active) Console.WriteLine(value);
@@ -612,7 +608,6 @@ namespace Gunbond_Client.Util
         // Exceptions:
         //   System.IO.IOException:
         //     An I/O error occurred.
-        [CLSCompliant(false)]
         public static void WriteLine(ulong value)
         {
             if (Active) Console.WriteLine(value);
@@ -798,7 +793,6 @@ namespace Gunbond_Client.Util
         //
         //   System.FormatException:
         //     The format specification in format is invalid.
-        [CLSCompliant(false)]
         public static void WriteLine(string format, object arg0, object arg1, object arg2, object arg3)
         {
             if (Active) Console.WriteLine(format, arg0, arg1, arg2, arg3);

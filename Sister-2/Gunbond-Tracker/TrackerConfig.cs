@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Xml;
 using System.IO;
+using Gunbond_Tracker.Util;
 
 namespace Gunbond_Client
 {
@@ -132,7 +133,7 @@ namespace Gunbond_Client
             }
         }
 
-        private void SaveData(string filename)
+        public void SaveData(string filename)
         {
             XmlWriter writer = XmlWriter.Create(filename);
             writer.WriteStartDocument();
@@ -151,6 +152,16 @@ namespace Gunbond_Client
 
             writer.Flush();
             writer.Close();
+        }
+
+        public void Print()
+        {
+            Logger.WriteLine("Current Settings:");
+            Logger.WriteLine("Max Peer\t\t: " + MaxPeer);
+            Logger.WriteLine("Max Room\t\t: " + MaxRoom);
+            string log_state = (Log) ? "on" : "off";
+            Logger.WriteLine("Log\t\t\t: " + log_state);
+            Logger.WriteLine();
         }
     }
 }

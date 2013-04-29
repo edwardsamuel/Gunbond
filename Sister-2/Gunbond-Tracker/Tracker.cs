@@ -252,7 +252,9 @@ namespace Gunbond_Tracker
                             {
                                 Logger.WriteLine("Join room request is sent by Peer " + peer + " for Room " + room);
 
-
+                                // send IP address back to peer
+                                response = Message.CreateMessageCreatorInfo(room.Creator.IpAddress.ToString(), 0);
+                                handler.Send(response.data, 0, response.data.Length, SocketFlags.None);
                             }
                             else
                             {
@@ -304,25 +306,33 @@ namespace Gunbond_Tracker
                             handler.Send(response.data, 0, response.data.Length, SocketFlags.None);
                         }
                         #endregion
+
+                        //}
+                        //else if (requestType == Message.MessageType.Add)
+                        //{
+                        //    #region Add
+                        //    int peerId;
+                        //    request.GetList(out peerId);
+                        //    Peer peer;
+                        //    if (peers.TryGetValue(peerId, out peer) && !peer.InRoom)
+                        //    {
+                        //        // ...
+                        //    }
+                        //    else
+                        //    {
+                        //        // send message FAIL that peer is not registered
+                        //        response = Message.CreateMessageFailed();
+                        //        handler.Send(response.data, 0, response.data.Length, SocketFlags.None);
+                        //    }
+                        //    #endregion
                     }
-                    //else if (requestType == Message.MessageType.Add)
-                    //{
-                    //    #region Add
-                    //    int peerId;
-                    //    request.GetList(out peerId);
-                    //    Peer peer;
-                    //    if (peers.TryGetValue(peerId, out peer) && !peer.InRoom)
-                    //    {
-                    //        // ...
-                    //    }
-                    //    else
-                    //    {
-                    //        // send message FAIL that peer is not registered
-                    //        response = Message.CreateMessageFailed();
-                    //        handler.Send(response.data, 0, response.data.Length, SocketFlags.None);
-                    //    }
-                    //    #endregion
-                    //}
+                    else
+                    {
+                        Logger.WriteLine("Unknown message received from " + (handler.RemoteEndPoint as IPEndPoint));
+                        // throw message failed
+                        response = Message.CreateMessageFailed();
+                        handler.Send(response.data, 0, response.data.Length, SocketFlags.None);
+                    }
 
                     #region Receive for Next Message
                     byte[] buffer = new byte[1024];

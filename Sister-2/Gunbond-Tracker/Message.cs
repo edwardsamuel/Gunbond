@@ -28,6 +28,7 @@ namespace Gunbond
             Quit = 235
         };
 
+        #region Message Room Body
         [StructLayout(LayoutKind.Sequential)]
         public struct MessageRoomBody
         {
@@ -36,6 +37,35 @@ namespace Gunbond
             public int maxPlayers;
             public int currentPlayer;
         }
+
+        private static byte[] GetBytes(MessageRoomBody mrb)
+        {
+            int size = Marshal.SizeOf(mrb);
+            byte[] arr = new byte[size];
+            IntPtr ptr = Marshal.AllocHGlobal(size);
+
+            Marshal.StructureToPtr(mrb, ptr, true);
+            Marshal.Copy(ptr, arr, 0, size);
+            Marshal.FreeHGlobal(ptr);
+
+            return arr;
+        }
+
+        private static MessageRoomBody FromBytes(byte[] arr)
+        {
+            MessageRoomBody str = new MessageRoomBody();
+
+            int size = Marshal.SizeOf(str);
+            IntPtr ptr = Marshal.AllocHGlobal(size);
+
+            Marshal.Copy(arr, 0, ptr, size);
+
+            str = (MessageRoomBody) Marshal.PtrToStructure(ptr, str.GetType());
+            Marshal.FreeHGlobal(ptr);
+
+            return str;
+        }
+        #endregion
 
         public Message()
         {
@@ -228,7 +258,7 @@ namespace Gunbond
             int j = 24;
             for (int i = 0; i < rooms.Count; i++)
             {
-                byte[] temp = Gunbond.Helper.StructureToByteArray(rooms[i]);
+                byte[] temp = GetBytes(rooms[i]);
                 Buffer.BlockCopy(temp, 0, data, j, mbSize);
                 j += mbSize;
             }
@@ -462,9 +492,15 @@ namespace Gunbond
             peerID = ConvertBytesToInt(d);
         }
 
-        public void GetRoom(out List<string> room)
+        public void GetRoom(out List<MessageRoomBody> rooms)
         {
-            room = new List<string>();
+            rooms = new List<MessageRoomBody>();
+
+            MessageRoomBody mb;
+            mb.currentPlayer = 0;
+            mb.maxPlayers = 2;
+            mb.roomId = "";
+            int mbSize = Marshal.SizeOf(mb);
 
             byte[] id = new byte[4];
             id[0] = data[20];
@@ -474,15 +510,13 @@ namespace Gunbond
 
             int CountRoom = ConvertBytesToInt(id);
 
-            byte[] r = new byte[50];
+            byte[] r = new byte[mbSize];
             int offset = 24;
             for (int i = 0; i < CountRoom; i++)
             {
-                for (int j = 0; j < 50; j++)
-                {
-                    r[j] = data[offset++];
-                }
-                room.Add(ConvertBytesToString(r));
+                Buffer.BlockCopy(data, offset, r, 0, mbSize);
+                offset += mbSize;
+                rooms.Add(FromBytes(r));
             }
         }
 

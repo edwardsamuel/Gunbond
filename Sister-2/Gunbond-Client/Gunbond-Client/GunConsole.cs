@@ -49,7 +49,7 @@ namespace Gunbond_Client
         private Config conf = new Config();
         private Socket trackerSocket;
         private Socket listener;
-        private Socket connector;
+        private Socket connectorToCreator;
         private int peerId;
 
         private List<Room> rooms;
@@ -84,7 +84,7 @@ namespace Gunbond_Client
         {
             trackerSocket = null;
             listener = null;
-
+            connectorToCreator = null;
             current_room = null;
             isConnected = false;
             inRoom = false;
@@ -240,114 +240,118 @@ namespace Gunbond_Client
 
         public void list()
         {
-            Logger.WriteLine("Requesting to list room");
-            
-            Message messageOut = Message.CreateMessageList(peerId);
-            byte[] buffer = new byte[1024];
-
-            trackerSocket.Send(messageOut.data, 0, messageOut.data.Length, SocketFlags.None);
-            trackerSocket.Receive(buffer, buffer.Length, SocketFlags.None);
-            Message messageIn = new Message(buffer);
-            if (messageIn.GetMessageType() == Message.MessageType.Room)
+            try
             {
-                List<Message.MessageRoomBody> s;
-                messageIn.GetRoom(out s);
-                foreach (var a in s)
+                Logger.WriteLine("Requesting to list room");
+
+                Message messageOut = Message.CreateMessageList(peerId);
+                byte[] buffer = new byte[1024];
+
+                trackerSocket.Send(messageOut.data, 0, messageOut.data.Length, SocketFlags.None);
+                trackerSocket.Receive(buffer, buffer.Length, SocketFlags.None);
+                Message messageIn = new Message(buffer);
+                if (messageIn.GetMessageType() == Message.MessageType.Room)
                 {
-                    Logger.WriteLine("ROOM: " + a);
+                    List<Message.MessageRoomBody> s;
+                    messageIn.GetRoom(out s);
+                    foreach (var a in s)
+                    {
+                        Logger.WriteLine("ROOM: " + a.roomId);
+                    }
                 }
             }
-             /*try
-             {
-                 if (isConnected)
-                 {
-                     if (inRoom)
-                     {
-                         if (isCreator)
-                         {
-                             Logger.WriteLine("Peer list: ");
-                             for (int i = 0; i < peers.Count; ++i)
-                             {
-                                Logger.WriteLine("- Peer " + (i + 1) + " " + peers[i].ToString());
-                             }
-                         }
-                         else
-                         {
-                             Message messageListOut = Message.CreateMessageList(peerId);
-                             byte[] bufferList = new byte[1024];
 
-                             trackerSocket.Send(messageListOut.data, 0, messageListOut.data.Length, SocketFlags.None);
-                             trackerSocket.Receive(bufferList, bufferList.Length, SocketFlags.None);
+            catch (Exception exc)
+            {
+                Logger.WriteLine(exc);
+            }
+        }
 
-                             Message messageListIn = new Message(bufferList);
-                             if (messageIn.GetMessageType() == Message.MessageType.Room)
-                             {
-                                 messageIn.getr
-                             }
-                         }
-                        
-                     }
-                     else
-                     {
-                         Logger.WriteLine("Requesting to list room");
-                         Message messageOut = Message.CreateMessageList(peerId);
-                         byte[] buffer = new byte[1024];
+        public bool join(string roomId)
+        {
+            try
+            {
+                if ((isConnected) && (!inRoom))
+                {
+                    Logger.WriteLine("Requesting to join room");
+                    Message messageOut = Message.CreateMessageJoin(peerId, roomId);
+                    byte[] buffer = new byte[1024];
 
-                         trackerSocket.Send(messageOut.data, 0, messageOut.data.Length, SocketFlags.None);
-                         trackerSocket.Receive(buffer, buffer.Length, SocketFlags.None);
-                         Message messageIn = new Message(buffer);
-                         if (messageIn.GetMessageType() == Message.MessageType.Room)
-                         {
-                              hash room
-                             int pos = 20;
-                             byte total_room_digit = buffer[pos];
-                             pos++;
+                    trackerSocket.Send(messageOut.data, 0, messageOut.data.Length, SocketFlags.None);
+                    trackerSocket.Receive(buffer, buffer.Length, SocketFlags.None);
+                    Message messageIn = new Message(buffer);
+                    Message.MessageType messageType = messageIn.GetMessageType();
+                    if (messageType == Message.MessageType.CreatorInfo)
+                    {
+                        string ip;
+                        int port;
+                        messageIn.GetCreatorInfo(out ip, out port);
+                        Logger.WriteLine("GunbondPeer (Peer - Tracker): Creator Info");
+                        Logger.WriteLine("Hostname: " + ip);
+                        Logger.WriteLine("Port    : " + port);
 
-                             long room_count = 0;
-                             for (int i = 0; i < total_room_digit; ++i)
-                             {
-                                 room_count = room_count << 256;
-                                 room_count += buffer[pos];
-                                 pos++;
-                             }
+                        SocketPermission permission = new SocketPermission(
+                                NetworkAccess.Connect,
+                                TransportType.Tcp,
+                                "",
+                                SocketPermission.AllPorts
+                                );
 
-                             rooms.Clear();
-                             int n = 0;
-                             while (n < room_count)
-                             {
-                                 while ((n < room_count) && (pos + 52 < 1024))
-                                 {
-                                     byte[] temp = new byte[52];
-                                     Buffer.BlockCopy(buffer, pos, temp, 0, 52);
-                                     rooms.Add(new Room(temp));
-                                     pos += 52;
-                                     n++;
-                                 }
-                                 if (n < room_count)
-                                 {
-                                     Array.Clear(buffer, 0, buffer.Length);
-                                     track_socket.Receive(buffer, buffer.Length, SocketFlags.None);
-                                 }
-                             }
+                        permission.Demand();
+                        IPAddress server_addr;
 
-                             Console.WriteLine("List of room: ");
+                        if (IPAddress.TryParse(ip, out server_addr))
+                        {
+                            IPEndPoint ipEndPoint = new IPEndPoint(server_addr, conf.ListenPort);
+                            connectorToCreator = new Socket(
+                                server_addr.AddressFamily,
+                                SocketType.Stream,
+                                ProtocolType.Tcp
+                               );
 
-                             StringBuilder sb = new StringBuilder();
-                             n = 0;
-                             while (n < room_count)//menuliskan string dari setiap room
-                             {
-                                 sb.AppendLine("Room ke-" + (n + 1) + ": ");
-
-                                 sb.AppendLine(rooms[n].ToLanguageString());
-                                 sb.AppendLine("");
-                                 n++;
-                             }
-                             Console.WriteLine(sb.ToString());
-                         }
-                     }
-                 }*/
-             }
-        
+                            connectorToCreator.NoDelay = false;
+                            connectorToCreator.Connect(ipEndPoint);
+                            return true;
+                        }
+                        else
+                        {
+                            return false;
+                        }
+                    }
+                       
+                    else if (messageType == Message.MessageType.Failed)
+                    {
+                        Console.WriteLine("Request join room failed 2.");
+                        return false;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Response unrecognized.");
+                        return false;
+                    }
+                }
+                else if (!isConnected)
+                {
+                    Console.WriteLine("Not connected to tracker, connect to tracker first.");
+                    return false;
+                }
+                else if (inRoom)
+                {
+                    Console.WriteLine("Currently in room, quit room first.");
+                    return false;
+                }
+                else
+                {
+                    Console.WriteLine("Unknown error.");
+                    return false;
+                }
+            }
+            catch (Exception exc)
+            {
+                Console.WriteLine(exc.ToString());
+                return false;
+            }
+        }
 
         private void ListenRoom(Object obj)
         {

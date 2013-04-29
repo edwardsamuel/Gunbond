@@ -46,13 +46,17 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Message.cs" />
+    <Compile Include="Model\Message.cs" />
+    <Compile Include="Model\Peer.cs" />
+    <Compile Include="Model\Room.cs" />
     <Compile Include="Tracker.cs" />
     <Compile Include="TrackerConfig.cs" />
+    <Compile Include="Util\Helper.cs" />
     <Compile Include="Util\Logger.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

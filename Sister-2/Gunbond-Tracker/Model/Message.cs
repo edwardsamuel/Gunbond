@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Runtime.InteropServices;
 
-namespace SocketLibrary
+namespace Gunbond_Tracker.Model
 {
     public class Message
     {
@@ -16,8 +17,8 @@ namespace SocketLibrary
             HandshakePeer = 135,
             HandshakeTracker = 136,
             KeepAlive = 182,
-            Create = 255,
-            List = 254,
+            CreateRoom = 255,
+            ListRoom = 254,
             CreatorInfo = 111,
             Room = 200,
             Success = 127,
@@ -27,8 +28,17 @@ namespace SocketLibrary
             Quit = 235
         };
 
+        [StructLayout(LayoutKind.Sequential)]
+        public struct MessageRoomBody
+        {
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 50)]
+            public string roomId;
+            public int maxPlayers;
+            public int currentPlayer;
+        }
+
         public Message()
-        { 
+        {
             // do nothing
         }
 
@@ -41,10 +51,10 @@ namespace SocketLibrary
         {
             byte[] bytes = new byte[4];
 
-            bytes[0] = (byte) (intValue >> 24);
-            bytes[1] = (byte) (intValue >> 16);
-            bytes[2] = (byte) (intValue >> 8);
-            bytes[3] = (byte) intValue;
+            bytes[0] = (byte)(intValue >> 24);
+            bytes[1] = (byte)(intValue >> 16);
+            bytes[2] = (byte)(intValue >> 8);
+            bytes[3] = (byte)intValue;
 
             return bytes;
         }
@@ -196,10 +206,16 @@ namespace SocketLibrary
             m.data = data;
             return m;
         }
-        
-        public static Message CreateMessageRoom(List<string> rooms)
+
+        public static Message CreateMessageRoom(List<MessageRoomBody> rooms)
         {
-            byte[] data = new byte[20 + 4 + (50 * rooms.Count)];
+            int mbSize = 0;
+            if (rooms.Count > 0)
+            {
+                mbSize = Marshal.SizeOf(rooms[0]);
+            }
+
+            byte[] data = new byte[20 + 4 + rooms.Count * mbSize];
             FillHeader(data);
             data[19] = 200;
 
@@ -208,20 +224,13 @@ namespace SocketLibrary
             data[21] = id[1];
             data[22] = id[2];
             data[23] = id[3];
-            
+
             int j = 24;
             for (int i = 0; i < rooms.Count; i++)
             {
-                byte[] roomID = ConvertStringToByte(rooms[i]);
-
-                for (; j < (i * 50 + 24) + roomID.Length; j++)
-                {
-                    data[j] = roomID[j - (i * 50 + 24)];
-                }
-                for (; j < (i * 50 + 24) + 50; j++)
-                {
-                    data[j] = 0;
-                }
+                byte[] temp = Gunbond.Util.Helper.StructureToByteArray(rooms[i]);
+                Buffer.BlockCopy(temp, 0, data, j, mbSize);
+                j += mbSize;
             }
 
             Message m = new Message();
@@ -251,7 +260,7 @@ namespace SocketLibrary
 
             for (int i = 28, len = 28 + hostBytes.Length; i < len; i++)
             {
-                data[i] = hostBytes[i -  28];
+                data[i] = hostBytes[i - 28];
             }
 
             Message m = new Message();
@@ -263,10 +272,10 @@ namespace SocketLibrary
         {
             // Create buffer data
             byte[] data = new byte[74];
-            
+
             // Fill with static header data
             FillHeader(data);
-            
+
             // Join Code
             data[19] = 253;
 
@@ -325,7 +334,7 @@ namespace SocketLibrary
             data[21] = id[1];
             data[22] = id[2];
             data[23] = id[3];
-            
+
             byte[] rID = ConvertStringToByte(roomID);
             int i;
             for (i = 24; i < rID.Length + 24; i++)
@@ -518,8 +527,8 @@ namespace SocketLibrary
                     case 135: return MessageType.HandshakePeer;
                     case 136: return MessageType.HandshakeTracker;
                     case 182: return MessageType.KeepAlive;
-                    case 255: return MessageType.Create;
-                    case 254: return MessageType.List;
+                    case 255: return MessageType.CreateRoom;
+                    case 254: return MessageType.ListRoom;
                     case 200: return MessageType.Room;
                     case 111: return MessageType.CreatorInfo;
                     case 127: return MessageType.Success;

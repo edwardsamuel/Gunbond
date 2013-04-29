@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 
-namespace Gunbond_Tracker.Model
+namespace Gunbond.Model
 {
     public class Message
     {

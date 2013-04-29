@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-using Gunbond_Client.Util;
+using Gunbond_Tracker.Util;
 
-namespace Gunbond_Client
+namespace Gunbond_Tracker
 {
     public class Program
     {

@@ -6,7 +6,7 @@ using System.Xml;
 using System.IO;
 using Gunbond_Tracker.Util;
 
-namespace Gunbond_Client
+namespace Gunbond_Tracker
 {
     public class TrackerConfig
     {

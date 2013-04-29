@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics;
 
-namespace Gunbond_Tracker.Util
+namespace Gunbond_Client.Util
 {
     public static class Logger
     {

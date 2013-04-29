@@ -8,7 +8,7 @@
     <ProjectGuid>{E60F1FB0-B9CA-455E-9C10-002CDFD822F5}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Gunbond_Tracker</RootNamespace>
+    <RootNamespace>Gunbond_Client</RootNamespace>
     <AssemblyName>Gunbond-Tracker</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <TargetFrameworkProfile>Client</TargetFrameworkProfile>

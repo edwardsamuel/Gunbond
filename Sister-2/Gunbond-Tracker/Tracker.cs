@@ -6,9 +6,9 @@ using System.IO;
 using System.Xml;
 using System.Net;
 using System.Net.Sockets;
-using Gunbond_Tracker.Util;
+using Gunbond_Client.Util;
 
-namespace Gunbond_Tracker
+namespace Gunbond_Client
 {
     public class Tracker
     {

@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 
-namespace Gunbond.Model
+namespace Gunbond
 {
     public class Message
     {
@@ -228,7 +228,7 @@ namespace Gunbond.Model
             int j = 24;
             for (int i = 0; i < rooms.Count; i++)
             {
-                byte[] temp = Gunbond.Util.Helper.StructureToByteArray(rooms[i]);
+                byte[] temp = Gunbond.Helper.StructureToByteArray(rooms[i]);
                 Buffer.BlockCopy(temp, 0, data, j, mbSize);
                 j += mbSize;
             }

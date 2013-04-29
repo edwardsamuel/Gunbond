@@ -6,7 +6,7 @@ using System.Net;
 
 namespace Gunbond_Client.Model
 {
-    class Peer
+    public class Peer
     {
         private IPAddress ip;
         public IPAddress IP

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Runtime.InteropServices;
 
-namespace Gunbond.Util
+namespace Gunbond
 {
     public static class Helper
     {

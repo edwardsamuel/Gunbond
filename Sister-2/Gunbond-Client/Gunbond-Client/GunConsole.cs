@@ -9,6 +9,7 @@ using System.IO;
 using System.Net;
 using Gunbond_Client.Util;
 using Gunbond_Client.Model;
+using Gunbond.Model;
 
 namespace Gunbond_Client
 {
@@ -240,6 +241,7 @@ namespace Gunbond_Client
         public void list()
         {
             Logger.WriteLine("Requesting to list room");
+            
             Message messageOut = Message.CreateMessageList(peerId);
             byte[] buffer = new byte[1024];
 

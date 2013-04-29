@@ -9,7 +9,7 @@ using System.IO;
 using System.Net;
 using Gunbond_Client.Util;
 using Gunbond_Client.Model;
-using Gunbond.Model;
+using Gunbond;
 
 namespace Gunbond_Client
 {
@@ -250,9 +250,9 @@ namespace Gunbond_Client
             Message messageIn = new Message(buffer);
             if (messageIn.GetMessageType() == Message.MessageType.Room)
             {
-                List<String> s;
+                List<Message.MessageRoomBody> s;
                 messageIn.GetRoom(out s);
-                foreach (string a in s)
+                foreach (var a in s)
                 {
                     Logger.WriteLine("ROOM: " + a);
                 }

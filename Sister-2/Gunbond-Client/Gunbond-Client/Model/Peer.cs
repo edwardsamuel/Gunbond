@@ -27,7 +27,7 @@ namespace Gunbond_Client.Model
             this.ip = ip;
         }
 
-        public Peer(byte[] id_and_ip)
+        /*public Peer(byte[] id_and_ip)
         {
             byte[] temp = new byte[4];
             Buffer.BlockCopy(id_and_ip, 0, temp, 0, 4);
@@ -45,6 +45,6 @@ namespace Gunbond_Client.Model
             sb.Remove(sb.Length - 1, 1);
 
             IPAddress.TryParse(sb.ToString(), out this.ip);
-        }
+        }*/
     }
 }

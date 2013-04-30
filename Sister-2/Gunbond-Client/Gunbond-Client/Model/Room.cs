@@ -20,7 +20,14 @@ namespace Gunbond_Client.Model
             get { return currentPlayer; }
             set { currentPlayer = value; }
         }
-        
+
+        private List<Peer> members;
+        public List<Peer> Members
+        {
+            get { return members; }
+            set { members = value; }
+        }
+
         private int maxPlayer;
         public int MaxPlayer
         {
@@ -32,6 +39,8 @@ namespace Gunbond_Client.Model
         {
             this.maxPlayer = maxPlayers;
             this.roomId = roomId;
+            this.currentPlayer = 0;
+           this.members = new List<Peer>();
         }
         /*public Room(byte[] id)
         {

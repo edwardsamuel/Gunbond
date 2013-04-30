@@ -29,8 +29,9 @@ namespace Gunbond_Client
             Logger.Active = true;
             gunConsole.connect();
             Logger.WriteLine("DDD");
-            gunConsole.create("liluu", 4);
+           // gunConsole.create("liluu", 4);
             gunConsole.list();
+            gunConsole.join("liluu");
         }
 
         /// <summary>

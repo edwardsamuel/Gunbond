@@ -14,11 +14,10 @@ namespace Gunbond_Client.Model
             set { roomId = value; }
         }
 
-        private int currentPlayer;
-        public int CurrentPlayer
+        public Peer Creator
         {
-            get { return currentPlayer; }
-            set { currentPlayer = value; }
+            get;
+            set;
         }
 
         private List<Peer> members;
@@ -35,28 +34,12 @@ namespace Gunbond_Client.Model
             set { maxPlayer = value; }
         }
 
-        public Room(string roomId, int maxPlayers)
+        public Room(string roomId, Peer creator, int maxPlayers)
         {
             this.maxPlayer = maxPlayers;
             this.roomId = roomId;
-            this.currentPlayer = 0;
-           this.members = new List<Peer>();
+            this.Creator = creator;
+            this.members = new List<Peer>();
         }
-        /*public Room(byte[] id)
-        {
-            byte[] temp = new byte[4];
-            Buffer.BlockCopy(id, 0, temp, 0, 50);
-
-            if (BitConverter.IsLittleEndian)
-                Array.Reverse(temp);
-
-            this.roomId = new System.Text.ASCIIEncoding().GetString(temp);
-            this.currentPlayer = id[50];
-            this.maxPlayer = id[51];
-        }
-        */
-        
-
-        
     }
 }

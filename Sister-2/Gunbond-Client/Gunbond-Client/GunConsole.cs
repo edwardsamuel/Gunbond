@@ -155,12 +155,6 @@ namespace Gunbond_Client
             set;
         }
 
-        public List<Peer> Peers
-        {
-            get;
-            set;
-        }
-
         public int PeerId
         {
             get;
@@ -183,6 +177,7 @@ namespace Gunbond_Client
             keepAliveRoom = null;
 
             Room = null;
+
             IsConnected = false;
             IsInRoom = false;
             IsCreator = false;
@@ -241,7 +236,7 @@ namespace Gunbond_Client
                             IsConnected = true;
                             Logger.WriteLine("Connection to tracker is successfully established. PeerID: " + PeerId);
 
-                            keepAlive = new Thread(new ThreadStart(SendAlive));
+                            keepAlive = new Thread(new ThreadStart(SendAliveTracker));
                             keepAlive.Start();
                             return true;
                         }
@@ -286,7 +281,9 @@ namespace Gunbond_Client
                     {
                         Logger.WriteLine("Request create room success");
 
-                        Room = new Room(roomId, maxPlayers);
+                        Room = new Room(roomId, new Peer(PeerId, (trackerSocket.LocalEndPoint as IPEndPoint).Address), maxPlayers);
+                        Room.Members.Add(Room.Creator);
+
                         IsInRoom = true;
                         IsCreator = true;
 
@@ -471,15 +468,29 @@ namespace Gunbond_Client
         }
 
         #region Keep Alive Thread
-        private void SendAlive()
+        private void SendAliveTracker()
         {
             try
             {
                 while (true)
                 {
                     Message mes = Message.CreateMessageKeepAlive(PeerId);
+                    byte[] buffer = new byte[1024];
+
                     trackerSocket.Send(mes.data, 0, mes.data.Length, SocketFlags.None);
-                    Thread.Sleep(Configuration.MaxTimeout / 10);
+                    trackerSocket.Receive(buffer, 0, buffer.Length, SocketFlags.None);
+
+                    Message response = new Message(buffer);
+                    if (response.GetMessageType() == Message.MessageType.KeepAlive)
+                    {
+                        Logger.WriteLine("KeepAlive success.");
+                        Thread.Sleep(Configuration.MaxTimeout / 10);
+                    }
+
+                    else
+                    {
+                        Logger.WriteLine("Message KeepAlive has not been received.");
+                    }
                 }
             }
             catch (Exception)
@@ -490,6 +501,43 @@ namespace Gunbond_Client
                     IsConnected = false;
                 }
             }
+        }
+
+        private void SendAliveNextPeer()
+        {
+            //try
+            //{
+            //    while (true)
+            //    {
+            //        if (nextPeerSocket == null || !nextPeerSocket.Connected)
+            //        {
+            //            Thread.Sleep(Configuration.MaxTimeout / 10);
+            //            continue;
+            //        }
+
+            //        Message mes = Message.CreateMessageKeepAlive(PeerId);
+            //        byte[] buffer = new byte[1024];
+
+            //        nextPeerSocket.Send(mes.data, 0, mes.data.Length, SocketFlags.None);
+            //        nextPeerSocket.Receive(buffer, 0, buffer.Length, SocketFlags.None);
+
+            //        Message response = new Message(buffer);
+            //        if (response.GetMessageType() == Message.MessageType.KeepAlive)
+            //        {
+            //            Logger.WriteLine("KeepAlive to next peer success.");
+            //            Thread.Sleep(Configuration.MaxTimeout / 10);
+            //        }
+            //        else
+            //        {
+            //            Logger.WriteLine("Message KeepAlive from next peer has not been received.");
+            //            nextPeerSocket.Close();
+            //        }
+            //    }
+            //}
+            //catch (Exception e)
+            //{
+            //    Logger.WriteLine(e.Message);
+            //}
         }
         #endregion
 
@@ -563,25 +611,29 @@ namespace Gunbond_Client
 
                 bool quit = false;
 
-
                 int bytesRead = handler.EndReceive(target);
                 if (bytesRead > 0)
                 {
-                    int currentPeerId;
                     Message request = new Message();
-
                     Message response;
+
                     Message.MessageType requestType = request.GetMessageType();
                     if (requestType == Message.MessageType.HandshakeTracker) // Peer client mau join ke room ini
                     {
-                        if (Room.CurrentPlayer < Room.MaxPlayer)
+                        #region Joining Room (Handshake)
+                        if (Room.Members.Count < Room.MaxPlayer)
                         {
-                            request.GetHandshakeTracker(out currentPeerId);
-                            Room.Members.Add(new Peer(currentPeerId, (handler.RemoteEndPoint as IPEndPoint).Address));
+                            int newPeerId;
+                            request.GetHandshakeTracker(out newPeerId);
+                            Room.Members.Add(new Peer(newPeerId, (handler.RemoteEndPoint as IPEndPoint).Address));
 
                             // Send SUCCESS message
                             response = Message.CreateMessageSuccess();
                             handler.Send(response.data, 0, response.data.Length, SocketFlags.None);
+
+                            // Send NewMember message to next peer
+                            response = Message.CreateMessageNewMember(newPeerId, (handler.RemoteEndPoint as IPEndPoint).Address);
+                            nextPeerSocket.Send(response.data, 0, response.data.Length, SocketFlags.None);
                         }
                         else
                         {
@@ -589,6 +641,66 @@ namespace Gunbond_Client
                             response = Message.CreateMessageFailed();
                             handler.Send(response.data, 0, response.data.Length, SocketFlags.None);
                         }
+                        #endregion
+                    }
+                    else if (requestType == Message.MessageType.KeepAlive)
+                    {
+                        //#region Keep Alive
+                        //int peerId;
+                        //request.GetKeepAlive(out peerId);
+                        //if (backPeer != null && backPeer.PeerId == peerId)
+                        //{
+                        //    //Send KeepAlive Message back
+                        //    response = request;
+                        //    handler.Send(response.data, 0, response.data.Length, SocketFlags.None);
+                        //}
+                        //#endregion
+                    }
+                    else if (requestType == Message.MessageType.NewMember)
+                    {
+                        #region NewMember
+                        if (IsCreator)
+                        {
+                            handler.Close();
+                        }
+                        else
+                        {
+                            bool isLast = Room.Members.Last().PeerId == PeerId;
+
+                            int newPeerId;
+                            IPAddress newPeerIp;
+                            request.GetNewMember(out newPeerId, out newPeerIp);
+                            Room.Members.Add(new Peer(newPeerId, newPeerIp));
+
+                            Logger.WriteLine("Tell new candidate to next peer");
+                            response = request;
+                            nextPeerSocket.Send(response.data, 0, response.data.Length, SocketFlags.None);
+
+                            if (isLast)
+                            {
+                                IPEndPoint ipEndPoint = new IPEndPoint(newPeerIp, Configuration.ListenPort);
+                                nextPeerSocket = new Socket(
+                                    newPeerIp.AddressFamily,
+                                    SocketType.Stream,
+                                    ProtocolType.Tcp
+                                   );
+
+                                nextPeerSocket.NoDelay = false;
+                                nextPeerSocket.Connect(ipEndPoint);
+
+                                Logger.WriteLine("Your next has been changed to "+ newPeerIp);
+
+                                response = Message.CreateMessageRoomModel(Room);
+                                nextPeerSocket.Send(response.data, 0, response.data.Length, SocketFlags.None);
+                            }
+                        }
+                        #endregion
+                    }
+                    else if (requestType == Message.MessageType.RoomModel)
+                    {
+                        Room room;
+                        request.GetRoomModel(out room);
+                        Room = room;
                     }
                 }
 

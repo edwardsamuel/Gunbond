@@ -25,7 +25,8 @@ namespace Gunbond
             Failed = 128,
             Join = 253,
             Start = 252,
-            Quit = 235
+            Quit = 235,
+            InGame = 123
         };
 
         #region Message Room Body
@@ -398,9 +399,10 @@ namespace Gunbond
             return m;
         }
 
-        public static Message CreateMessageGame(int x, int y, int power)
+        #region MessageGame
+        public static Message CreateMessageGame(int x, int y, int angle, int power, int damage)
         {
-            byte[] data = new byte[24];
+            byte[] data = new byte[32];
             FillHeader(data);
             //data[0] = (byte)'G';
             //data[1] = (byte)'U';
@@ -425,17 +427,31 @@ namespace Gunbond
             data[16] = temp2[1];
             data[17] = temp2[2];
             data[18] = temp2[3];
-            //data[19..22] for power
-            byte[] temp3 = ConvertIntToByte(power);
-            data[19] = temp3[0];
-            data[20] = temp3[1];
-            data[21] = temp3[2];
-            data[22] = temp3[3];
-
+            //data[19] for Message Type
+            data[19] = 123;
+            //data[20..23] for angle
+            byte[] temp3 = ConvertIntToByte(angle);
+            data[20] = temp3[0];
+            data[21] = temp3[1];
+            data[22] = temp3[2];
+            data[23] = temp3[3];
+            //data[24..27] for power
+            byte[] temp4 = ConvertIntToByte(power);
+            data[24] = temp4[0];
+            data[25] = temp4[1];
+            data[26] = temp4[2];
+            data[27] = temp4[3];
+            //data[28..31] for damage
+            byte[] temp5 = ConvertIntToByte(damage);
+            data[28] = temp5[0];
+            data[29] = temp5[1];
+            data[30] = temp5[2];
+            data[31] = temp5[3];
             Message m = new Message();
             m.data = data;
             return m;
         }
+        #endregion
 
         public void GetHandshakeTracker(out int peerId)
         {
@@ -591,28 +607,42 @@ namespace Gunbond
             peerID = ConvertBytesToInt(d);
         }
 
-        public void GetMessageGame(out int x, out int y, out int power)
+        #region GetMessageGame
+        public void GetMessageGame(out int x, out int y, out int angle, out int power, out int damage)
         {
             byte[] d = new byte[4];
-            //d[11..14] for x position
+            //data[11..14] for x position
             d[0] = data[11];
             d[1] = data[12];
             d[2] = data[13];
             d[3] = data[14];
             x = ConvertBytesToInt(d);
-            //d[15..18] for y position
+            //data[15..18] for y position
             d[0] = data[15];
             d[1] = data[16];
             d[2] = data[17];
             d[3] = data[18];
-            y = ConvertBytesToInt(d);   
-            //d[19..22] for power
+            y = ConvertBytesToInt(d);
+            //data[20..23] for angle
+            d[0] = data[19];
+            d[1] = data[20];
+            d[2] = data[21];
+            d[3] = data[22];
+            angle = ConvertBytesToInt(d);
+            //data[24..27] for power
             d[0] = data[19];
             d[1] = data[20];
             d[2] = data[21];
             d[3] = data[22];
             power = ConvertBytesToInt(d);
+            //data[28..31] for damage
+            d[0] = data[28];
+            d[1] = data[29];
+            d[2] = data[30];
+            d[3] = data[31];
+            damage = ConvertBytesToInt(d);
         }
+        #endregion
 
         public MessageType GetMessageType()
         {
@@ -632,6 +662,8 @@ namespace Gunbond
                     case 253: return MessageType.Join;
                     case 252: return MessageType.Start;
                     case 235: return MessageType.Quit;
+                    case 123: return MessageType.InGame;
+
                     default: return MessageType.Unknown;
                 }
             }

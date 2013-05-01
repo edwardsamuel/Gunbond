@@ -28,10 +28,9 @@ namespace Gunbond_Client
             GunConsole gunConsole = new GunConsole("peerConf.xml");
             Logger.Active = true;
             gunConsole.ConnectTracker();
-            Logger.WriteLine("DDD");
-           // gunConsole.create("liluu", 4);
-            gunConsole.ListRooms();
-            gunConsole.JoinRoom("liluu");
+            gunConsole.CreateRoom("liluu", 4);
+            //gunConsole.ListRooms();
+            //gunConsole.JoinRoom("liluu");
         }
 
         /// <summary>

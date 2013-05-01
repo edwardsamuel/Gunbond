@@ -181,16 +181,6 @@ namespace Gunbond_Client
             IsConnected = false;
             IsInRoom = false;
             IsCreator = false;
-
-            IPAddress ipAddr = (trackerSocket.LocalEndPoint as IPEndPoint).Address;
-            IPEndPoint ipEndPoint = new IPEndPoint(ipAddr, Configuration.ListenPort);
-            SocketPermission permission = new SocketPermission(NetworkAccess.Accept, TransportType.Tcp, "", Configuration.ListenPort);
-
-            listenerSocket = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            listenerSocket.Bind(ipEndPoint);
-
-            waitPeer = new Thread(new ParameterizedThreadStart(WaitPeer));
-            waitPeer.Start(4);
         }
 
         public bool ConnectTracker()
@@ -235,6 +225,19 @@ namespace Gunbond_Client
                             PeerId = peerId;
                             IsConnected = true;
                             Logger.WriteLine("Connection to tracker is successfully established. PeerID: " + PeerId);
+
+                            IPAddress ipAddr = (trackerSocket.LocalEndPoint as IPEndPoint).Address;
+                            IPEndPoint ipEndPointListener = new IPEndPoint(ipAddr, Configuration.ListenPort);
+                            SocketPermission permissionListener = new SocketPermission(NetworkAccess.Accept, TransportType.Tcp, "", Configuration.ListenPort);
+
+                            listenerSocket = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                            listenerSocket.Bind(ipEndPointListener);
+
+                            permission.Demand();
+
+                            waitPeer = new Thread(new ParameterizedThreadStart(WaitPeer));
+                            waitPeer.Start(4);
+
 
                             keepAlive = new Thread(new ThreadStart(SendAliveTracker));
                             keepAlive.Start();

@@ -48,9 +48,10 @@ namespace Gunbond_Client
         #region Attribute and Getter Setter
         private Config conf = new Config();
         private Socket trackerSocket;
-        private Socket listener;
-        private Socket connectorToCreator;
+        private Socket listenerSocket;
+        private Socket nextPeerSocket;
         private int peerId;
+
 
         private List<Room> rooms;
         public List<Room> Rooms
@@ -66,7 +67,7 @@ namespace Gunbond_Client
             set { peers = value; }
         }
         private Thread keepAlive;
-        private Thread listenToRoom;
+        private Thread waitPeer;
         private Thread keepAliveRoom;
 
         private Room current_room;
@@ -83,8 +84,8 @@ namespace Gunbond_Client
         public GunConsole(string fileName)
         {
             trackerSocket = null;
-            listener = null;
-            connectorToCreator = null;
+            listenerSocket = null;
+            nextPeerSocket = null;
             current_room = null;
             isConnected = false;
             inRoom = false;
@@ -93,12 +94,20 @@ namespace Gunbond_Client
             rooms = new List<Room>();
 
             keepAlive = null;
-            listenToRoom = null;
+            waitPeer = null;
             keepAliveRoom = null;
 
-
-
             LoadData(fileName);
+
+            IPAddress ipAddr = (trackerSocket.LocalEndPoint as IPEndPoint).Address;
+            IPEndPoint ipEndPoint = new IPEndPoint(ipAddr, conf.ListenPort);
+            SocketPermission permission = new SocketPermission(NetworkAccess.Accept, TransportType.Tcp, "", conf.ListenPort);
+
+            listenerSocket = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            listenerSocket.Bind(ipEndPoint);
+
+            waitPeer = new Thread(new ParameterizedThreadStart(WaitPeer));
+            waitPeer.Start(4);
         }
 
         public bool connect()
@@ -192,16 +201,6 @@ namespace Gunbond_Client
                         inRoom = true;
                         isCreator = true;
 
-                        IPAddress ipAddr = (trackerSocket.LocalEndPoint as IPEndPoint).Address;
-                        IPEndPoint ipEndPoint = new IPEndPoint(ipAddr, conf.ListenPort);
-                        SocketPermission permission = new SocketPermission(NetworkAccess.Accept, TransportType.Tcp, "", conf.ListenPort);
-
-                        listener = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-                        listener.Bind(ipEndPoint);
-
-                        listenToRoom = new Thread(new ParameterizedThreadStart(ListenRoom));
-                        listenToRoom.Start(maxPlayers);
-
                         return true;
                     }
                     else if (messageIn.GetMessageType() == Message.MessageType.Failed)
@@ -260,7 +259,6 @@ namespace Gunbond_Client
                     }
                 }
             }
-
             catch (Exception exc)
             {
                 Logger.WriteLine(exc);
@@ -303,22 +301,44 @@ namespace Gunbond_Client
                         if (IPAddress.TryParse(ip, out server_addr))
                         {
                             IPEndPoint ipEndPoint = new IPEndPoint(server_addr, conf.ListenPort);
-                            connectorToCreator = new Socket(
+                            nextPeerSocket = new Socket(
                                 server_addr.AddressFamily,
                                 SocketType.Stream,
                                 ProtocolType.Tcp
                                );
 
-                            connectorToCreator.NoDelay = false;
-                            connectorToCreator.Connect(ipEndPoint);
-                            return true;
+                            nextPeerSocket.NoDelay = false;
+                            nextPeerSocket.Connect(ipEndPoint);
+                            Message messageConnectToCreator = Message.CreateMessageHandshakeTracker(peerId);
+
+                            byte[] bufferFromCreator = new byte[1024];
+
+                            trackerSocket.Send(messageConnectToCreator.data, 0, messageConnectToCreator.data.Length, SocketFlags.None);
+                            trackerSocket.Receive(bufferFromCreator, bufferFromCreator.Length, SocketFlags.None);
+
+                            Message messageFromCreator = new Message(bufferFromCreator);
+                            Message.MessageType fromCreatorMessageType = messageFromCreator.GetMessageType();
+                            if (fromCreatorMessageType == Message.MessageType.Success)
+                            {
+                                inRoom = true;
+                                current_room.RoomId = roomId;
+                                isCreator = false;
+
+                                Logger.WriteLine("Successfully joined room.");
+                                return true;
+                            }
+                            else
+                            {
+                                Logger.WriteLine("Request join room failed 1.");
+                                return false;
+                            }
                         }
                         else
                         {
                             return false;
                         }
                     }
-                       
+
                     else if (messageType == Message.MessageType.Failed)
                     {
                         Console.WriteLine("Request join room failed 2.");
@@ -353,19 +373,136 @@ namespace Gunbond_Client
             }
         }
 
-        private void ListenRoom(Object obj)
+        private void WaitPeer(Object obj)
         {
             try
             {
                 Logger.WriteLine("ListenToRoom thread has just been created.");
-                listener.Listen((int)obj);
+                listenerSocket.Listen((int)obj);
 
-                //  AsyncCallback aCallback = new AsyncCallback(AcceptCallback);
-                //listener.BeginAccept(aCallback, listener);
+                AsyncCallback aCallback = new AsyncCallback(AcceptCallback);
+                listenerSocket.BeginAccept(aCallback, listenerSocket);
             }
             catch (Exception e)
             {
                 Console.WriteLine(e.ToString());
+            }
+        }
+        public void AcceptCallback(IAsyncResult target)
+        {
+            Socket slistener = null;
+
+            // new socket
+            Socket handler = null;
+            try
+            {
+                byte[] buffer = new byte[1024];
+                slistener = (Socket)target.AsyncState;
+                handler = slistener.EndAccept(target);
+                handler.NoDelay = false;
+
+                object[] obj = new object[2];
+                obj[0] = buffer;
+                obj[1] = handler;
+
+                IAsyncResult handle_timeout = handler.BeginReceive(
+                    buffer,
+                    0,
+                    buffer.Length,
+                    SocketFlags.None,
+                    new AsyncCallback(ReceiveCallback),
+                    obj
+                    );
+
+                AsyncCallback aCallback = new AsyncCallback(AcceptCallback);
+                slistener.BeginAccept(aCallback, slistener);
+
+                if (!handle_timeout.AsyncWaitHandle.WaitOne(conf.MaxTimeout))
+                {
+                    Logger.WriteLine("Connection timeout for peer with IP Address " + (handler.RemoteEndPoint as IPEndPoint).Address);
+                    handler.EndReceive(target);
+                    handler.Close();
+                }
+            }
+            catch (Exception exc)
+            {
+                Logger.WriteLine(exc);
+            }
+        }
+
+        public void ReceiveCallback(IAsyncResult target)
+        {
+            try
+            {
+                object[] obj = new object[2];
+                obj = (object[])target.AsyncState;
+                byte[] buffer = (byte[])obj[0];
+                Socket handler = (Socket)obj[1];
+
+                bool quit = false;
+
+
+                int bytesRead = handler.EndReceive(target);
+                if (bytesRead > 0)
+                {
+                    int currentPeerId;
+                    Message request = new Message();
+                   
+                     Message response;
+                    Message.MessageType requestType = request.GetMessageType();
+                    if (requestType == Message.MessageType.HandshakeTracker)
+                    {
+                        
+                        if (current_room.CurrentPlayer < current_room.MaxPlayer)
+                        {
+                            request.GetHandshakeTracker(out currentPeerId);
+                            current_room.Members.Add(new Peer (currentPeerId, (handler.RemoteEndPoint as IPEndPoint).Address));
+                            response = Message.CreateMessageSuccess();
+                            handler.Send(response.data, 0, response.data.Length, SocketFlags.None);
+                        }
+                        else
+                        {
+                            response = Message.CreateMessageFailed();
+                            handler.Send(response.data, 0, response.data.Length, SocketFlags.None);
+                        }
+                    }
+                }
+
+                if (!quit)
+                {
+                    IAsyncResult handle_timeout = handler.BeginReceive(
+                        buffer,
+                        0,
+                        buffer.Length,
+                        SocketFlags.None,
+                        new AsyncCallback(ReceiveCallback),
+                        obj
+                    );
+
+                    if (!handle_timeout.AsyncWaitHandle.WaitOne(conf.MaxTimeout))
+                    {
+                        Logger.WriteLine("Connection timeout for peer with IP Address " + (handler.RemoteEndPoint as IPEndPoint).Address);
+
+                        // find peer id
+                        bool check = true;
+                        int i = 0;
+                        while ((check) && (i < peers.Count))
+                        {
+                            if (peers[i].IP.Equals((handler.RemoteEndPoint as IPEndPoint).Address))
+                            {
+                                peers.RemoveAt(i);
+                                check = false;
+                            }
+                            i++;
+                        }
+
+                        handler.Close();
+                    }
+                }
+            }
+            catch (Exception exc)
+            {
+                Logger.WriteLine(exc);
             }
         }
 

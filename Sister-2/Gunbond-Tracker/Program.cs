@@ -21,7 +21,7 @@ namespace Gunbond_Tracker
             Logger.WriteLine("GunBond Tracker");
             Logger.WriteLine("----------------------------");
             Logger.WriteLine("Current Settings:");
-            tracker.Config.Print();
+            tracker.Configuration.Print();
             Logger.WriteLine("Tracker has started successfully...");
             Logger.WriteLine();
 
@@ -37,7 +37,7 @@ namespace Gunbond_Tracker
                 }
             }
 
-            tracker.Config.SaveData("config.xml");
+            tracker.Configuration.SaveData("config.xml");
             Console.WriteLine("GunBond Tracker is going to turn off.");
         }
     }

@@ -50,7 +50,6 @@
     <Compile Include="Model\Peer.cs" />
     <Compile Include="Model\Room.cs" />
     <Compile Include="Tracker.cs" />
-    <Compile Include="TrackerConfig.cs" />
     <Compile Include="Helper.cs" />
     <Compile Include="Util\Logger.cs" />
     <Compile Include="Program.cs" />

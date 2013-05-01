@@ -527,7 +527,7 @@ namespace Gunbond_Client
                 obj[0] = buffer;
                 obj[1] = handler;
 
-                IAsyncResult handle_timeout = handler.BeginReceive(
+                IAsyncResult nextAsyncResult = handler.BeginReceive(
                     buffer,
                     0,
                     buffer.Length,
@@ -539,7 +539,7 @@ namespace Gunbond_Client
                 AsyncCallback aCallback = new AsyncCallback(AcceptCallback);
                 slistener.BeginAccept(aCallback, slistener);
 
-                if (!handle_timeout.AsyncWaitHandle.WaitOne(Configuration.MaxTimeout))
+                if (!nextAsyncResult.AsyncWaitHandle.WaitOne(Configuration.MaxTimeout))
                 {
                     Logger.WriteLine("Connection timeout for peer with IP Address " + (handler.RemoteEndPoint as IPEndPoint).Address);
                     handler.EndReceive(target);
@@ -594,7 +594,7 @@ namespace Gunbond_Client
 
                 if (!quit)
                 {
-                    IAsyncResult handle_timeout = handler.BeginReceive(
+                    IAsyncResult nextAsyncResult = handler.BeginReceive(
                         buffer,
                         0,
                         buffer.Length,
@@ -603,23 +603,9 @@ namespace Gunbond_Client
                         obj
                     );
 
-                    if (!handle_timeout.AsyncWaitHandle.WaitOne(Configuration.MaxTimeout))
+                    if (!nextAsyncResult.AsyncWaitHandle.WaitOne(Configuration.MaxTimeout))
                     {
                         Logger.WriteLine("Connection timeout for peer with IP Address " + (handler.RemoteEndPoint as IPEndPoint).Address);
-
-                        // find peer id
-                        bool check = true;
-                        int i = 0;
-                        while ((check) && (i < peers.Count))
-                        {
-                            if (peers[i].IP.Equals((handler.RemoteEndPoint as IPEndPoint).Address))
-                            {
-                                peers.RemoveAt(i);
-                                check = false;
-                            }
-                            i++;
-                        }
-
                         handler.Close();
                     }
                 }

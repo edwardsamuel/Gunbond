@@ -12,10 +12,167 @@ using Gunbond_Tracker.Util;
 
 namespace Gunbond_Tracker
 {
+    public class TrackerConfig
+    {
+        #region Properties
+        public int MaxRoom
+        {
+            get;
+            set;
+        }
+
+        public int MaxPeer
+        {
+            get;
+            set;
+        }
+
+        public bool Log
+        {
+            get;
+            set;
+        }
+
+        public int Backlog
+        {
+            get;
+            set;
+        }
+
+        public int MaxTimeout
+        {
+            get;
+            set;
+        }
+
+        public int Port
+        {
+            get;
+            set;
+        }
+
+        public string IpAddress
+        {
+            get;
+            set;
+        }
+        #endregion
+
+        public TrackerConfig()
+        {
+            // do nothing
+        }
+
+        public TrackerConfig(string filename)
+        {
+            LoadData(filename);
+        }
+
+        public void LoadData(string filename)
+        {
+            if (File.Exists(filename))
+            {
+                XmlTextReader reader = new XmlTextReader(filename);
+                while (reader.Read())
+                {
+                    switch (reader.NodeType)
+                    {
+                        case XmlNodeType.Element:
+                            {
+                                switch (reader.Name)
+                                {
+                                    case "MaxPeer":
+                                        {
+                                            MaxPeer = Int32.Parse(reader.ReadString());
+                                            break;
+                                        }
+                                    case "MaxRoom":
+                                        {
+                                            MaxRoom = Int32.Parse(reader.ReadString());
+                                            break;
+                                        }
+                                    case "Log":
+                                        {
+                                            string temp = reader.ReadString();
+                                            Log = ("on".Equals(temp)) ? true : false;
+                                            break;
+                                        }
+                                    case "Backlog":
+                                        {
+                                            Backlog = Int32.Parse(reader.ReadString());
+                                            break;
+                                        }
+                                    case "MaxTimeout":
+                                        {
+                                            MaxTimeout = Int32.Parse(reader.ReadString());
+                                            break;
+                                        }
+                                    case "Port":
+                                        {
+                                            Port = Int32.Parse(reader.ReadString());
+                                            break;
+                                        }
+                                    case "IpAddress":
+                                        {
+                                            IpAddress = reader.ReadString();
+                                            break;
+                                        }
+                                }
+                                break;
+                            }
+                    }
+                }
+                reader.Close();
+            }
+            else
+            {
+                // default configuration
+                MaxPeer = 1000;
+                MaxRoom = 100;
+                Log = true;
+                Backlog = 10000;
+                MaxTimeout = 30000;
+                Port = 9351;
+                IpAddress = "127.0.0.1";
+            }
+        }
+
+        public void SaveData(string filename)
+        {
+            XmlWriter writer = XmlWriter.Create(filename);
+            writer.WriteStartDocument();
+            writer.WriteStartElement("Config");
+
+            writer.WriteElementString("IpAddress", IpAddress.ToString());
+            writer.WriteElementString("MaxPeer", MaxPeer.ToString());
+            writer.WriteElementString("MaxRoom", MaxRoom.ToString());
+            writer.WriteElementString("Log", (Log) ? "on" : "off");
+            writer.WriteElementString("Backlog", Backlog.ToString());
+            writer.WriteElementString("MaxTimeout", MaxTimeout.ToString());
+            writer.WriteElementString("Port", Port.ToString());
+
+            writer.WriteEndElement();
+            writer.WriteEndDocument();
+
+            writer.Flush();
+            writer.Close();
+        }
+
+        public void Print()
+        {
+            Logger.WriteLine("Current Settings:");
+            Logger.WriteLine("Max Peer\t\t: " + MaxPeer);
+            Logger.WriteLine("Max Room\t\t: " + MaxRoom);
+            string log_state = (Log) ? "on" : "off";
+            Logger.WriteLine("Log\t\t\t: " + log_state);
+            Logger.WriteLine();
+        }
+    }
+
     public class Tracker
     {
         #region Properties
-        public TrackerConfig Config
+        public TrackerConfig Configuration
         {
             get;
             set;
@@ -29,16 +186,16 @@ namespace Gunbond_Tracker
 
         public Tracker(string configfile)
         {
-            Config = new TrackerConfig(configfile);
-            Logger.Active = Config.Log;
+            Configuration = new TrackerConfig(configfile);
+            Logger.Active = Configuration.Log;
 
             peers = new Dictionary<int, Peer>();
             rooms = new Dictionary<string, Room>();
 
             // Listening on socket
-            IPAddress ipAddr = IPAddress.Parse(Config.IpAddress);
-            IPEndPoint ipEndPoint = new IPEndPoint(ipAddr, Config.Port);
-            SocketPermission permission = new SocketPermission(NetworkAccess.Accept, TransportType.Tcp, "", Config.Port);
+            IPAddress ipAddr = IPAddress.Parse(Configuration.IpAddress);
+            IPEndPoint ipEndPoint = new IPEndPoint(ipAddr, Configuration.Port);
+            SocketPermission permission = new SocketPermission(NetworkAccess.Accept, TransportType.Tcp, "", Configuration.Port);
             permission.Demand();
 
             try
@@ -48,7 +205,7 @@ namespace Gunbond_Tracker
 
                 Console.WriteLine("Listening at IP " + ipEndPoint.Address + " and port " + ipEndPoint.Port + ".");
 
-                listener.Listen(Config.Backlog);
+                listener.Listen(Configuration.Backlog);
 
                 AsyncCallback aCallback = new AsyncCallback(AcceptCallback);
                 listener.BeginAccept(aCallback, listener);
@@ -91,7 +248,7 @@ namespace Gunbond_Tracker
                 AsyncCallback aCallback = new AsyncCallback(AcceptCallback);
                 slistener.BeginAccept(aCallback, slistener);
 
-                if (!nextAsyncResult.AsyncWaitHandle.WaitOne(Config.MaxTimeout))
+                if (!nextAsyncResult.AsyncWaitHandle.WaitOne(Configuration.MaxTimeout))
                 {
                     Logger.WriteLine("Connection timeout for peer with IP Address " + (handler.RemoteEndPoint as IPEndPoint).Address + ":" + (handler.RemoteEndPoint as IPEndPoint).Port);
                     handler.EndReceive(result);
@@ -129,7 +286,7 @@ namespace Gunbond_Tracker
                         #region Handshake
                         Logger.WriteLine("New peer with IP Address " + (handler.RemoteEndPoint as IPEndPoint).Address.ToString() + " request handshake.");
 
-                        if (peers.Count < Config.MaxPeer)
+                        if (peers.Count < Configuration.MaxPeer)
                         {
                             int newPeerId = GenerateNewPeerId();
                             Peer peer = new Peer(newPeerId, (handler.RemoteEndPoint as IPEndPoint).Address);
@@ -348,7 +505,7 @@ namespace Gunbond_Tracker
                         obj
                         );
 
-                    if (!nextAsyncResult.AsyncWaitHandle.WaitOne(Config.MaxTimeout))
+                    if (!nextAsyncResult.AsyncWaitHandle.WaitOne(Configuration.MaxTimeout))
                     {
                         Logger.WriteLine("Connection timeout for peer with IP Address " + (handler.RemoteEndPoint as IPEndPoint).Address);
 

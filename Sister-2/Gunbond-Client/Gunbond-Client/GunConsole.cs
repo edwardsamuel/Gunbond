@@ -487,7 +487,7 @@ namespace Gunbond_Client
                     if (response.GetMessageType() == Message.MessageType.KeepAlive)
                     {
                         Logger.WriteLine("KeepAlive success.");
-                        Thread.Sleep(Configuration.MaxTimeout / 10);
+                        Thread.Sleep(Configuration.MaxTimeout / 2);
                     }
 
                     else
@@ -578,6 +578,8 @@ namespace Gunbond_Client
                 obj[0] = buffer;
                 obj[1] = handler;
 
+                Logger.WriteLine("Connection accepted from IPAddress " + (handler.RemoteEndPoint as IPEndPoint).Address + ":" + (handler.RemoteEndPoint as IPEndPoint).Port);
+
                 IAsyncResult nextAsyncResult = handler.BeginReceive(
                     buffer,
                     0,
@@ -617,7 +619,7 @@ namespace Gunbond_Client
                 int bytesRead = handler.EndReceive(target);
                 if (bytesRead > 0)
                 {
-                    Message request = new Message();
+                    Message request = new Message(buffer);
                     Message response;
 
                     Message.MessageType requestType = request.GetMessageType();

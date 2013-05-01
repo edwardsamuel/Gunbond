@@ -30,7 +30,8 @@ namespace Gunbond
 
             InGame = 123,
             NewMember = 30,
-            RoomModel = 31        };
+            RoomModel = 31
+        };
 
         #region Message Room Body
         [StructLayout(LayoutKind.Sequential)]
@@ -672,7 +673,7 @@ namespace Gunbond
             peerID = ConvertBytesToInt(d);
 
             byte[] ip = new byte[4];
-            Buffer.BlockCopy(data, 23,ip, 0, 4);
+            Buffer.BlockCopy(data, 24, ip, 0, 4);
             IP = new IPAddress(ip);
         }
 

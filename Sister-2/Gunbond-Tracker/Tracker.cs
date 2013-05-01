@@ -311,17 +311,20 @@ namespace Gunbond_Tracker
                     else if (requestType == Message.MessageType.KeepAlive)
                     {
                         #region Keep Alive
-
                         int peerId;
                         Peer peer;
                         request.GetKeepAlive(out peerId);
                         if (peers.TryGetValue(peerId, out peer))
                         {
                             Logger.WriteLine("Keep alive is sent by Peer: " + peer);
+
+                            // send KEEP ALIVE message back
+                            response = request;
+                            handler.Send(response.data, 0, response.data.Length, SocketFlags.None);
                         }
                         else
                         {
-                            // send message FAIL that peer is not registered
+                            // send FAIL message that peer is not registered
                             response = Message.CreateMessageFailed();
                             handler.Send(response.data, 0, response.data.Length, SocketFlags.None);
                         }

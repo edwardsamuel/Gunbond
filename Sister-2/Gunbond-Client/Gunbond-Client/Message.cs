@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
+using System.Net;
 
 namespace Gunbond
 {
@@ -25,8 +26,11 @@ namespace Gunbond
             Failed = 128,
             Join = 253,
             Start = 252,
-            Quit = 235
-        };
+            Quit = 235,
+
+            InGame = 123,
+            NewMember = 30,
+            RoomModel = 31        };
 
         #region Message Room Body
         [StructLayout(LayoutKind.Sequential)]
@@ -398,9 +402,10 @@ namespace Gunbond
             return m;
         }
 
-        public static Message CreateMessageGame(int x, int y, int power)
+        #region MessageGame
+        public static Message CreateMessageGame(int x, int y, int angle, int power, int damage)
         {
-            byte[] data = new byte[24];
+            byte[] data = new byte[32];
             FillHeader(data);
             //data[0] = (byte)'G';
             //data[1] = (byte)'U';
@@ -425,12 +430,81 @@ namespace Gunbond
             data[16] = temp2[1];
             data[17] = temp2[2];
             data[18] = temp2[3];
-            //data[19..22] for power
-            byte[] temp3 = ConvertIntToByte(power);
-            data[19] = temp3[0];
-            data[20] = temp3[1];
-            data[21] = temp3[2];
-            data[22] = temp3[3];
+            //data[19] for Message Type
+            data[19] = 123;
+            //data[20..23] for angle
+            byte[] temp3 = ConvertIntToByte(angle);
+            data[20] = temp3[0];
+            data[21] = temp3[1];
+            data[22] = temp3[2];
+            data[23] = temp3[3];
+            //data[24..27] for power
+            byte[] temp4 = ConvertIntToByte(power);
+            data[24] = temp4[0];
+            data[25] = temp4[1];
+            data[26] = temp4[2];
+            data[27] = temp4[3];
+            //data[28..31] for damage
+            byte[] temp5 = ConvertIntToByte(damage);
+            data[28] = temp5[0];
+            data[29] = temp5[1];
+            data[30] = temp5[2];
+            data[31] = temp5[3];
+            Message m = new Message();
+            m.data = data;
+            return m;
+        }
+        #endregion
+
+        public static Message CreateMessageNewMember(int peerId, IPAddress IP)
+        {
+            byte[] data = new byte[24];
+            FillHeader(data);
+            data[19] = 30;
+
+            byte[] id = ConvertIntToByte(peerId);
+            data[20] = id[0];
+            data[21] = id[1];
+            data[22] = id[2];
+            data[23] = id[3];
+
+            byte[] ip = IP.GetAddressBytes(); 
+
+            for (int i = 24; i < ip.Length + 24; i++)
+            {
+                data[i] = ip[i - 24];
+            }
+
+            Message m = new Message();
+            m.data = data;
+            return m;
+        }
+
+        public static Message CreateMessageRoomModel(Gunbond_Client.Model.Room room)
+        {
+            int len = 20 + 4 + 4 + 4 + room.Members.Count * (4 + 4);
+            if (len > 1024) throw new Exception("Panjang data > 1024");
+
+            byte[] data = new byte[len];
+            FillHeader(data);
+            data[19] = 31;
+
+            byte[] bRoomId = ConvertStringToByte(room.RoomId);
+            byte[] bMaxPlayer = ConvertIntToByte(room.MaxPlayer);
+            byte[] bMembersCount = ConvertIntToByte(room.Members.Count);
+
+            Buffer.BlockCopy(bRoomId, 0, data, 20, 4);
+            Buffer.BlockCopy(bMaxPlayer, 0, data, 24, 4);
+            Buffer.BlockCopy(bMembersCount, 0, data, 28, 4);
+
+            for (int i = 0; i < room.Members.Count; i++)
+            {
+                byte[] bPeerId = ConvertIntToByte(room.Members[i].PeerId);
+                byte[] bPeerIp = room.Members[i].IP.GetAddressBytes();
+
+                Buffer.BlockCopy(bPeerId, 0, data, 32 + (i * 8), 4);
+                Buffer.BlockCopy(bPeerIp, 0, data, 32 + (i * 8) + 4, 4);
+            }
 
             Message m = new Message();
             m.data = data;
@@ -591,29 +665,88 @@ namespace Gunbond
             peerID = ConvertBytesToInt(d);
         }
 
-        public void GetMessageGame(out int x, out int y, out int power)
+        public void GetNewMember(out int peerID, out IPAddress IP)
         {
             byte[] d = new byte[4];
-            //d[11..14] for x position
+            Buffer.BlockCopy(data, 20, d, 0, 4);
+            peerID = ConvertBytesToInt(d);
+
+            byte[] ip = new byte[4];
+            Buffer.BlockCopy(data, 23,ip, 0, 4);
+            IP = new IPAddress(ip);
+        }
+
+
+        public void GetRoomModel(out Gunbond_Client.Model.Room room)
+        {
+
+            byte[] bRoomId = new byte[4];
+            byte[] bMaxPlayer = new byte[4];
+            byte[] bMembersCount = new byte[4];
+
+            Buffer.BlockCopy(data, 20, bRoomId, 0, 4);
+            Buffer.BlockCopy(data, 24, bMaxPlayer, 0, 4);
+            Buffer.BlockCopy(data, 28, bMembersCount, 0, 4);
+
+            string roomId = ConvertBytesToString(bRoomId);
+            int maxPlayer = ConvertBytesToInt(bMaxPlayer);
+            int memberCount = ConvertBytesToInt(bMembersCount);
+            List<Gunbond_Client.Model.Peer> members = new List<Gunbond_Client.Model.Peer>();
+            for (int i = 0; i < memberCount; i++)
+            {
+                byte[] bPeerId = new byte[4];
+                byte[] bPeerIp = new byte[4];
+
+                Buffer.BlockCopy(data, 32 + (i * 8), bPeerId, 0, 4);
+                Buffer.BlockCopy(data, 32 + (i * 8) + 4, bPeerIp, 0, 4);
+
+                int peerId = ConvertBytesToInt(bPeerId);
+                IPAddress peerIp = new IPAddress(bPeerIp);
+
+                members.Add(new Gunbond_Client.Model.Peer(peerId, peerIp));
+            }
+
+            room = new Gunbond_Client.Model.Room(roomId, members.First(), maxPlayer);
+            room.Members = members;
+        }
+        #region GetMessageGame
+        public void GetMessageGame(out int x, out int y, out int angle, out int power, out int damage)
+        {
+            byte[] d = new byte[4];
+            //data[11..14] for x position
             d[0] = data[11];
             d[1] = data[12];
             d[2] = data[13];
             d[3] = data[14];
             x = ConvertBytesToInt(d);
-            //d[15..18] for y position
+            //data[15..18] for y position
             d[0] = data[15];
             d[1] = data[16];
             d[2] = data[17];
             d[3] = data[18];
-            y = ConvertBytesToInt(d);   
-            //d[19..22] for power
+            y = ConvertBytesToInt(d);
+            //data[20..23] for angle
+            d[0] = data[19];
+            d[1] = data[20];
+            d[2] = data[21];
+            d[3] = data[22];
+            angle = ConvertBytesToInt(d);
+            //data[24..27] for power
             d[0] = data[19];
             d[1] = data[20];
             d[2] = data[21];
             d[3] = data[22];
             power = ConvertBytesToInt(d);
+            //data[28..31] for damage
+            d[0] = data[28];
+            d[1] = data[29];
+            d[2] = data[30];
+            d[3] = data[31];
+            damage = ConvertBytesToInt(d);
         }
+        #endregion
 
+       
         public MessageType GetMessageType()
         {
             if (data.Length >= 20)
@@ -632,6 +765,12 @@ namespace Gunbond
                     case 253: return MessageType.Join;
                     case 252: return MessageType.Start;
                     case 235: return MessageType.Quit;
+
+                    case 30: return MessageType.NewMember;
+                    case 31: return MessageType.RoomModel;
+
+                    case 123: return MessageType.InGame;
+
                     default: return MessageType.Unknown;
                 }
             }

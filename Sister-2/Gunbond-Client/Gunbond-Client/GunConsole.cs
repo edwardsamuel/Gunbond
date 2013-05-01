@@ -13,7 +13,7 @@ using Gunbond;
 
 namespace Gunbond_Client
 {
-    public class Config
+    public class ClientConfig
     {
         private string tracker_address;
         public string TrackerAddress
@@ -40,68 +40,156 @@ namespace Gunbond_Client
             get { return max_timeout; }
             set { max_timeout = value; }
         }
+
+        public void LoadData(String filename)
+        {
+            if (File.Exists(filename))
+            {
+                XmlTextReader reader = new XmlTextReader(filename);
+                while (reader.Read())
+                {
+                    switch (reader.NodeType)
+                    {
+                        case XmlNodeType.Element:
+                            {
+                                switch (reader.Name)
+                                {
+                                    case "tracker_address":
+                                        {
+                                            this.TrackerAddress = reader.ReadString();
+                                            break;
+                                        }
+                                    case "max_timeout":
+                                        {
+                                            this.MaxTimeout = Int32.Parse(reader.ReadString());
+                                            break;
+                                        }
+                                    case "port":
+                                        {
+                                            this.Port = Int32.Parse(reader.ReadString());
+                                            break;
+                                        }
+                                    case "listen_port":
+                                        {
+                                            this.ListenPort = Int32.Parse(reader.ReadString());
+                                            break;
+                                        }
+                                }
+                                break;
+                            }
+                    }
+                }
+                reader.Close();
+            }
+            else
+            {
+                // default this
+                this.TrackerAddress = "127.0.0.1";
+                this.MaxTimeout = 30000;
+                this.Port = 9351;
+                this.ListenPort = 9757;
+                this.SaveData(filename);
+            }
+        }
+        public void SaveData(String filename)
+        {
+            XmlWriter writer = XmlWriter.Create(filename);
+            writer.WriteStartDocument();
+            writer.WriteStartElement("Config");
+            writer.WriteElementString("tracker_address", this.TrackerAddress);
+            writer.WriteElementString("max_timeout", this.MaxTimeout.ToString());
+            writer.WriteElementString("port", this.Port.ToString());
+            writer.WriteElementString("listen_port", this.ListenPort.ToString());
+
+            writer.WriteEndElement();
+            writer.WriteEndDocument();
+
+            writer.Flush();
+            writer.Close();
+        }
     };
 
     public class GunConsole
     {
 
-        #region Attribute and Getter Setter
-        private Config conf = new Config();
+        #region Attributes and Properties
         private Socket trackerSocket;
         private Socket listenerSocket;
         private Socket nextPeerSocket;
-        private int peerId;
 
-
-        private List<Room> rooms;
-        public List<Room> Rooms
-        {
-            get { return rooms; }
-            set { rooms = value; }
-        }
-
-        private List<Peer> peers;
-        public List<Peer> Peers
-        {
-            get { return peers; }
-            set { peers = value; }
-        }
         private Thread keepAlive;
         private Thread waitPeer;
         private Thread keepAliveRoom;
 
-        private Room current_room;
-        private bool inRoom;
-        private bool isCreator;
+        private ClientConfig _config;
+        public ClientConfig Configuration
+        {
+            get
+            {
+                return _config;
+            }
+        }
 
-        private bool isConnected;
+        public bool IsInRoom
+        {
+            get;
+            set;
+        }
+
+        public bool IsCreator
+        {
+            get;
+            set;
+        }
+
+        public bool IsConnected
+        {
+            get;
+            set;
+        }
 
 
+        public Room Room
+        {
+            get;
+            set;
+        }
 
+        public List<Peer> Peers
+        {
+            get;
+            set;
+        }
+
+        public int PeerId
+        {
+            get;
+            set;
+        }
 
         #endregion
 
         public GunConsole(string fileName)
         {
+            _config = new ClientConfig();
+            _config.LoadData(fileName);
+
             trackerSocket = null;
             listenerSocket = null;
             nextPeerSocket = null;
-            current_room = null;
-            isConnected = false;
-            inRoom = false;
-            isCreator = false;
-
-            rooms = new List<Room>();
 
             keepAlive = null;
             waitPeer = null;
             keepAliveRoom = null;
 
-            LoadData(fileName);
+            Room = null;
+            IsConnected = false;
+            IsInRoom = false;
+            IsCreator = false;
 
             IPAddress ipAddr = (trackerSocket.LocalEndPoint as IPEndPoint).Address;
-            IPEndPoint ipEndPoint = new IPEndPoint(ipAddr, conf.ListenPort);
-            SocketPermission permission = new SocketPermission(NetworkAccess.Accept, TransportType.Tcp, "", conf.ListenPort);
+            IPEndPoint ipEndPoint = new IPEndPoint(ipAddr, Configuration.ListenPort);
+            SocketPermission permission = new SocketPermission(NetworkAccess.Accept, TransportType.Tcp, "", Configuration.ListenPort);
 
             listenerSocket = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             listenerSocket.Bind(ipEndPoint);
@@ -110,11 +198,11 @@ namespace Gunbond_Client
             waitPeer.Start(4);
         }
 
-        public bool connect()
+        public bool ConnectTracker()
         {
             try
             {
-                if (!isConnected)
+                if (!IsConnected)
                 {
                     SocketPermission permission = new SocketPermission(
                         NetworkAccess.Connect,
@@ -126,9 +214,9 @@ namespace Gunbond_Client
                     permission.Demand();
 
                     IPAddress trackerAddr;
-                    if (IPAddress.TryParse(conf.TrackerAddress, out trackerAddr))
+                    if (IPAddress.TryParse(Configuration.TrackerAddress, out trackerAddr))
                     {
-                        IPEndPoint ipEndPoint = new IPEndPoint(trackerAddr, conf.Port);
+                        IPEndPoint ipEndPoint = new IPEndPoint(trackerAddr, Configuration.Port);
                         trackerSocket = new Socket(
                             trackerAddr.AddressFamily,
                             SocketType.Stream,
@@ -147,12 +235,13 @@ namespace Gunbond_Client
                         Message messageIn = new Message(buffer);
                         if (messageIn.GetMessageType() == Message.MessageType.HandshakeTracker)
                         {
-
+                            int peerId;
                             messageIn.GetHandshakeTracker(out peerId);
-                            Logger.WriteLine("Connection to tracker is successfully established. PeerID: " + peerId);
-                            isConnected = true;
+                            PeerId = peerId;
+                            IsConnected = true;
+                            Logger.WriteLine("Connection to tracker is successfully established. PeerID: " + PeerId);
 
-                            keepAlive = new Thread(new ThreadStart(send_alive));
+                            keepAlive = new Thread(new ThreadStart(SendAlive));
                             keepAlive.Start();
                             return true;
                         }
@@ -181,15 +270,15 @@ namespace Gunbond_Client
             }
         }
 
-        public bool create(string roomId, int maxPlayers)
+        public bool CreateRoom(string roomId, int maxPlayers)
         {
             try
             {
-                if (isConnected && !inRoom)
+                if (IsConnected && !IsInRoom)
                 {
                     byte[] buffer = new byte[1024];
                     Logger.WriteLine("Requesting to create room");
-                    Message messageOut = Message.CreateMessageCreate(peerId, maxPlayers, roomId);
+                    Message messageOut = Message.CreateMessageCreate(PeerId, maxPlayers, roomId);
                     trackerSocket.Send(messageOut.data, 0, messageOut.data.Length, SocketFlags.None);
                     trackerSocket.Receive(buffer, buffer.Length, SocketFlags.None);
                     Message messageIn = new Message(buffer);
@@ -197,9 +286,9 @@ namespace Gunbond_Client
                     {
                         Logger.WriteLine("Request create room success");
 
-                        current_room = new Room(roomId, maxPlayers);
-                        inRoom = true;
-                        isCreator = true;
+                        Room = new Room(roomId, maxPlayers);
+                        IsInRoom = true;
+                        IsCreator = true;
 
                         return true;
                     }
@@ -214,12 +303,12 @@ namespace Gunbond_Client
                         return false;
                     }
                 }
-                else if (!isConnected)
+                else if (!IsConnected)
                 {
                     Logger.WriteLine("Not connected to tracker, connect to tracker first.");
                     return false;
                 }
-                else if (inRoom)
+                else if (IsInRoom)
                 {
                     Logger.WriteLine("Currently in room, quit room first.");
                     return false;
@@ -237,17 +326,18 @@ namespace Gunbond_Client
             }
         }
 
-        public void list()
+        public List<Message.MessageRoomBody> ListRooms()
         {
             try
             {
                 Logger.WriteLine("Requesting to list room");
 
-                Message messageOut = Message.CreateMessageList(peerId);
+                Message messageOut = Message.CreateMessageList(PeerId);
                 byte[] buffer = new byte[1024];
 
                 trackerSocket.Send(messageOut.data, 0, messageOut.data.Length, SocketFlags.None);
                 trackerSocket.Receive(buffer, buffer.Length, SocketFlags.None);
+
                 Message messageIn = new Message(buffer);
                 if (messageIn.GetMessageType() == Message.MessageType.Room)
                 {
@@ -257,22 +347,29 @@ namespace Gunbond_Client
                     {
                         Logger.WriteLine("ROOM: " + a.roomId);
                     }
+                    return s;
+                }
+                else
+                {
+                    Logger.WriteLine("Failed to list rooms");
+                    return null;
                 }
             }
             catch (Exception exc)
             {
                 Logger.WriteLine(exc);
+                return null;
             }
         }
 
-        public bool join(string roomId)
+        public bool JoinRoom(string roomId)
         {
             try
             {
-                if ((isConnected) && (!inRoom))
+                if ((IsConnected) && (!IsInRoom))
                 {
                     Logger.WriteLine("Requesting to join room");
-                    Message messageOut = Message.CreateMessageJoin(peerId, roomId);
+                    Message messageOut = Message.CreateMessageJoin(PeerId, roomId);
                     byte[] buffer = new byte[1024];
 
                     trackerSocket.Send(messageOut.data, 0, messageOut.data.Length, SocketFlags.None);
@@ -300,7 +397,7 @@ namespace Gunbond_Client
 
                         if (IPAddress.TryParse(ip, out server_addr))
                         {
-                            IPEndPoint ipEndPoint = new IPEndPoint(server_addr, conf.ListenPort);
+                            IPEndPoint ipEndPoint = new IPEndPoint(server_addr, Configuration.ListenPort);
                             nextPeerSocket = new Socket(
                                 server_addr.AddressFamily,
                                 SocketType.Stream,
@@ -309,7 +406,7 @@ namespace Gunbond_Client
 
                             nextPeerSocket.NoDelay = false;
                             nextPeerSocket.Connect(ipEndPoint);
-                            Message messageConnectToCreator = Message.CreateMessageHandshakeTracker(peerId);
+                            Message messageConnectToCreator = Message.CreateMessageHandshakeTracker(PeerId);
 
                             byte[] bufferFromCreator = new byte[1024];
 
@@ -320,9 +417,9 @@ namespace Gunbond_Client
                             Message.MessageType fromCreatorMessageType = messageFromCreator.GetMessageType();
                             if (fromCreatorMessageType == Message.MessageType.Success)
                             {
-                                inRoom = true;
-                                current_room.RoomId = roomId;
-                                isCreator = false;
+                                IsInRoom = true;
+                                Room.RoomId = roomId;
+                                IsCreator = false;
 
                                 Logger.WriteLine("Successfully joined room.");
                                 return true;
@@ -350,12 +447,12 @@ namespace Gunbond_Client
                         return false;
                     }
                 }
-                else if (!isConnected)
+                else if (!IsConnected)
                 {
                     Console.WriteLine("Not connected to tracker, connect to tracker first.");
                     return false;
                 }
-                else if (inRoom)
+                else if (IsInRoom)
                 {
                     Console.WriteLine("Currently in room, quit room first.");
                     return false;
@@ -373,11 +470,35 @@ namespace Gunbond_Client
             }
         }
 
+        #region Keep Alive Thread
+        private void SendAlive()
+        {
+            try
+            {
+                while (true)
+                {
+                    Message mes = Message.CreateMessageKeepAlive(PeerId);
+                    trackerSocket.Send(mes.data, 0, mes.data.Length, SocketFlags.None);
+                    Thread.Sleep(Configuration.MaxTimeout / 10);
+                }
+            }
+            catch (Exception)
+            {
+                if (trackerSocket == null)
+                {
+                    Logger.WriteLine("Connection terminated");
+                    IsConnected = false;
+                }
+            }
+        }
+        #endregion
+
+        #region Listening Socket
         private void WaitPeer(Object obj)
         {
             try
             {
-                Logger.WriteLine("ListenToRoom thread has just been created.");
+                Logger.WriteLine("Listening thread has just been created.");
                 listenerSocket.Listen((int)obj);
 
                 AsyncCallback aCallback = new AsyncCallback(AcceptCallback);
@@ -388,7 +509,8 @@ namespace Gunbond_Client
                 Console.WriteLine(e.ToString());
             }
         }
-        public void AcceptCallback(IAsyncResult target)
+
+        private void AcceptCallback(IAsyncResult target)
         {
             Socket slistener = null;
 
@@ -417,7 +539,7 @@ namespace Gunbond_Client
                 AsyncCallback aCallback = new AsyncCallback(AcceptCallback);
                 slistener.BeginAccept(aCallback, slistener);
 
-                if (!handle_timeout.AsyncWaitHandle.WaitOne(conf.MaxTimeout))
+                if (!handle_timeout.AsyncWaitHandle.WaitOne(Configuration.MaxTimeout))
                 {
                     Logger.WriteLine("Connection timeout for peer with IP Address " + (handler.RemoteEndPoint as IPEndPoint).Address);
                     handler.EndReceive(target);
@@ -430,7 +552,7 @@ namespace Gunbond_Client
             }
         }
 
-        public void ReceiveCallback(IAsyncResult target)
+        private void ReceiveCallback(IAsyncResult target)
         {
             try
             {
@@ -447,21 +569,23 @@ namespace Gunbond_Client
                 {
                     int currentPeerId;
                     Message request = new Message();
-                   
-                     Message response;
+
+                    Message response;
                     Message.MessageType requestType = request.GetMessageType();
-                    if (requestType == Message.MessageType.HandshakeTracker)
+                    if (requestType == Message.MessageType.HandshakeTracker) // Peer client mau join ke room ini
                     {
-                        
-                        if (current_room.CurrentPlayer < current_room.MaxPlayer)
+                        if (Room.CurrentPlayer < Room.MaxPlayer)
                         {
                             request.GetHandshakeTracker(out currentPeerId);
-                            current_room.Members.Add(new Peer (currentPeerId, (handler.RemoteEndPoint as IPEndPoint).Address));
+                            Room.Members.Add(new Peer(currentPeerId, (handler.RemoteEndPoint as IPEndPoint).Address));
+
+                            // Send SUCCESS message
                             response = Message.CreateMessageSuccess();
                             handler.Send(response.data, 0, response.data.Length, SocketFlags.None);
                         }
                         else
                         {
+                            // Send FAILED message akibat ruang penuh
                             response = Message.CreateMessageFailed();
                             handler.Send(response.data, 0, response.data.Length, SocketFlags.None);
                         }
@@ -479,7 +603,7 @@ namespace Gunbond_Client
                         obj
                     );
 
-                    if (!handle_timeout.AsyncWaitHandle.WaitOne(conf.MaxTimeout))
+                    if (!handle_timeout.AsyncWaitHandle.WaitOne(Configuration.MaxTimeout))
                     {
                         Logger.WriteLine("Connection timeout for peer with IP Address " + (handler.RemoteEndPoint as IPEndPoint).Address);
 
@@ -505,96 +629,6 @@ namespace Gunbond_Client
                 Logger.WriteLine(exc);
             }
         }
-
-        private void send_alive()
-        {
-            try
-            {
-                while (true)
-                {
-                    Message mes = Message.CreateMessageKeepAlive(peerId);
-                    trackerSocket.Send(mes.data, 0, mes.data.Length, SocketFlags.None);
-                    Thread.Sleep(conf.MaxTimeout / 10);
-                }
-            }
-            catch (Exception)
-            {
-                if (trackerSocket == null)
-                {
-                    Logger.WriteLine("Connection terminated");
-                    isConnected = false;
-                }
-            }
-        }
-
-        #region Configuration Data
-        private void LoadData(String xml)
-        {
-            if (File.Exists(xml))
-            {
-                XmlTextReader reader = new XmlTextReader(xml);
-                while (reader.Read())
-                {
-                    switch (reader.NodeType)
-                    {
-                        case XmlNodeType.Element:
-                            {
-                                switch (reader.Name)
-                                {
-                                    case "tracker_address":
-                                        {
-                                            conf.TrackerAddress = reader.ReadString();
-                                            break;
-                                        }
-                                    case "max_timeout":
-                                        {
-                                            conf.MaxTimeout = Int32.Parse(reader.ReadString());
-                                            break;
-                                        }
-                                    case "port":
-                                        {
-                                            conf.Port = Int32.Parse(reader.ReadString());
-                                            break;
-                                        }
-                                    case "listen_port":
-                                        {
-                                            conf.ListenPort = Int32.Parse(reader.ReadString());
-                                            break;
-                                        }
-                                }
-                                break;
-                            }
-                    }
-                }
-                reader.Close();
-            }
-            else
-            {
-                // default configuration
-                conf.TrackerAddress = "127.0.0.1";
-                conf.MaxTimeout = 30000;
-                conf.Port = 9351;
-                conf.ListenPort = 9757;
-                this.SaveData(xml);
-            }
-        }
-        private void SaveData(String xml)
-        {
-            XmlWriter writer = XmlWriter.Create(xml);
-            writer.WriteStartDocument();
-            writer.WriteStartElement("Config");
-            writer.WriteElementString("tracker_address", conf.TrackerAddress);
-            writer.WriteElementString("max_timeout", conf.MaxTimeout.ToString());
-            writer.WriteElementString("port", conf.Port.ToString());
-            writer.WriteElementString("listen_port", conf.ListenPort.ToString());
-
-            writer.WriteEndElement();
-            writer.WriteEndDocument();
-
-            writer.Flush();
-            writer.Close();
-        }
         #endregion
-
     }
 }

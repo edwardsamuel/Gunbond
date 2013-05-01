@@ -671,7 +671,7 @@ namespace Gunbond_Client
                     }
                     else if (requestType == Message.MessageType.KeepAlive)
                     {
-                        //#region Keep Alive
+                        #region Keep Alive
                         //int peerId;
                         //request.GetKeepAlive(out peerId);
                         //if (backPeer != null && backPeer.PeerId == peerId)
@@ -680,7 +680,7 @@ namespace Gunbond_Client
                         //    response = request;
                         //    handler.Send(response.data, 0, response.data.Length, SocketFlags.None);
                         //}
-                        //#endregion
+                        #endregion
                     }
                     else if (requestType == Message.MessageType.NewMember)
                     {

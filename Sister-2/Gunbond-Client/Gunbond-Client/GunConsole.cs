@@ -627,16 +627,37 @@ namespace Gunbond_Client
                         if (Room.Members.Count < Room.MaxPlayer)
                         {
                             int newPeerId;
+                            IPAddress newPeerIp = (handler.RemoteEndPoint as IPEndPoint).Address;
                             request.GetHandshakeTracker(out newPeerId);
-                            Room.Members.Add(new Peer(newPeerId, (handler.RemoteEndPoint as IPEndPoint).Address));
+                            Room.Members.Add(new Peer(newPeerId, newPeerIp));
 
                             // Send SUCCESS message
                             response = Message.CreateMessageSuccess();
                             handler.Send(response.data, 0, response.data.Length, SocketFlags.None);
 
-                            // Send NewMember message to next peer
-                            response = Message.CreateMessageNewMember(newPeerId, (handler.RemoteEndPoint as IPEndPoint).Address);
-                            nextPeerSocket.Send(response.data, 0, response.data.Length, SocketFlags.None);
+                            if (nextPeerSocket != null)
+                            {
+                                // Send NewMember message to next peer
+                                response = Message.CreateMessageNewMember(newPeerId, (handler.RemoteEndPoint as IPEndPoint).Address);
+                                nextPeerSocket.Send(response.data, 0, response.data.Length, SocketFlags.None);
+                            }
+                            else
+                            {
+                                IPEndPoint ipEndPoint = new IPEndPoint(newPeerIp, Configuration.ListenPort);
+                                nextPeerSocket = new Socket(
+                                    newPeerIp.AddressFamily,
+                                    SocketType.Stream,
+                                    ProtocolType.Tcp
+                                   );
+
+                                nextPeerSocket.NoDelay = false;
+                                nextPeerSocket.Connect(ipEndPoint);
+
+                                Logger.WriteLine("Your next has been changed to " + newPeerIp);
+
+                                response = Message.CreateMessageRoomModel(Room);
+                                nextPeerSocket.Send(response.data, 0, response.data.Length, SocketFlags.None);
+                            }
                         }
                         else
                         {

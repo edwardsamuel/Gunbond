@@ -29,8 +29,8 @@ namespace Gunbond_Client
             Logger.Active = true;
             gunConsole.ConnectTracker();
             gunConsole.CreateRoom("liluu", 4);
-            //gunConsole.ListRooms();
-            //gunConsole.JoinRoom("liluu");
+            // var list = gunConsole.ListRooms();
+            // gunConsole.JoinRoom(list[0].roomId);
         }
 
         /// <summary>

@@ -399,7 +399,59 @@ namespace Gunbond
             return m;
         }
 
-        #region MessageGame
+		#region MessageGame
+        public static Message CreateMessageGame(int x, int y, float angle, float power, int damage)
+        {
+            byte[] data = new byte[32];
+            FillHeader(data);
+            //data[0] = (byte)'G';
+            //data[1] = (byte)'U';
+            //data[2] = (byte)'N';
+            //data[3] = (byte)'B';
+            //data[4] = (byte)'O';
+            //data[5] = (byte)'N';
+            //data[6] = (byte)'D';
+            //data[7] = (byte)'G';
+            //data[8] = (byte)'A';
+            //data[9] = (byte)'M';
+            //data[10] = (byte)'E';
+            //data[11..14] for x position
+            byte[] temp = ConvertIntToByte(x);
+            data[11] = temp[0];
+            data[12] = temp[1];
+            data[13] = temp[2];
+            data[14] = temp[3];
+            //data[15..18] for y position
+            byte[] temp2 = ConvertIntToByte(y);
+            data[15] = temp2[0];
+            data[16] = temp2[1];
+            data[17] = temp2[2];
+            data[18] = temp2[3];
+            //data[19] for Message Type
+            data[19] = 123;
+            //data[20..23] for angle
+            byte[] temp3 = BitConverter.GetBytes(angle);
+            data[20] = temp3[0];
+            data[21] = temp3[1];
+            data[22] = temp3[2];
+            data[23] = temp3[3];
+            //data[24..27] for power
+            byte[] temp4 = BitConverter.GetBytes(power);
+            data[24] = temp4[0];
+            data[25] = temp4[1];
+            data[26] = temp4[2];
+            data[27] = temp4[3];
+            //data[28..31] for damage
+            byte[] temp5 = ConvertIntToByte(damage);
+            data[28] = temp5[0];
+            data[29] = temp5[1];
+            data[30] = temp5[2];
+            data[31] = temp5[3];
+            Message m = new Message();
+            m.data = data;
+            return m;
+        }
+        #endregion
         public static Message CreateMessageGame(int x, int y, int angle, int power, int damage)
         {
             byte[] data = new byte[32];
@@ -608,6 +660,41 @@ namespace Gunbond
         }
 
         #region GetMessageGame
+        public void GetMessageGame(out int x, out int y, out float angle, out float power, out int damage)
+        {
+            byte[] d = new byte[4];
+            //data[11..14] for x position
+            d[0] = data[11];
+            d[1] = data[12];
+            d[2] = data[13];
+            d[3] = data[14];
+            x = ConvertBytesToInt(d);
+            //data[15..18] for y position
+            d[0] = data[15];
+            d[1] = data[16];
+            d[2] = data[17];
+            d[3] = data[18];
+            y = ConvertBytesToInt(d);
+            //data[20..23] for angle
+            d[0] = data[19];
+            d[1] = data[20];
+            d[2] = data[21];
+            d[3] = data[22];
+            angle = BitConverter.ToSingle(d,0);
+            //data[24..27] for power
+            d[0] = data[19];
+            d[1] = data[20];
+            d[2] = data[21];
+            d[3] = data[22];
+            power = BitConverter.ToSingle(d,0);
+            //data[28..31] for damage
+            d[0] = data[28];
+            d[1] = data[29];
+            d[2] = data[30];
+            d[3] = data[31];
+            damage = ConvertBytesToInt(d);
+        }
+        #endregion
         public void GetMessageGame(out int x, out int y, out int angle, out int power, out int damage)
         {
             byte[] d = new byte[4];

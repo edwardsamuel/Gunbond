@@ -25,7 +25,8 @@ namespace Gunbond
             Failed = 128,
             Join = 253,
             Start = 252,
-            Quit = 235
+            Quit = 235,
+			InGame = 123
         };
 
         #region Message Room Body
@@ -399,7 +400,7 @@ namespace Gunbond
         }
 
         #region MessageGame
-        public static Message CreateMessageGame(int x, int y, int angle, int power, int damage)
+        public static Message CreateMessageGame(int x, int y, float angle, float power, int damage)
         {
             byte[] data = new byte[32];
             FillHeader(data);
@@ -429,13 +430,13 @@ namespace Gunbond
             //data[19] for Message Type
             data[19] = 123;
             //data[20..23] for angle
-            byte[] temp3 = ConvertIntToByte(angle);
+            byte[] temp3 = BitConverter.GetBytes(angle);
             data[20] = temp3[0];
             data[21] = temp3[1];
             data[22] = temp3[2];
             data[23] = temp3[3];
             //data[24..27] for power
-            byte[] temp4 = ConvertIntToByte(power);
+            byte[] temp4 = BitConverter.GetBytes(power);
             data[24] = temp4[0];
             data[25] = temp4[1];
             data[26] = temp4[2];
@@ -451,7 +452,7 @@ namespace Gunbond
             return m;
         }
         #endregion
-
+		
         public void GetHandshakeTracker(out int peerId)
         {
             byte[] d = new byte[4];
@@ -607,7 +608,7 @@ namespace Gunbond
         }
 
         #region GetMessageGame
-        public void GetMessageGame(out int x, out int y, out int angle, out int power, out int damage)
+        public void GetMessageGame(out int x, out int y, out float angle, out float power, out int damage)
         {
             byte[] d = new byte[4];
             //data[11..14] for x position
@@ -627,13 +628,13 @@ namespace Gunbond
             d[1] = data[20];
             d[2] = data[21];
             d[3] = data[22];
-            angle = ConvertBytesToInt(d);
+            angle = BitConverter.ToSingle(d,0);
             //data[24..27] for power
             d[0] = data[19];
             d[1] = data[20];
             d[2] = data[21];
             d[3] = data[22];
-            power = ConvertBytesToInt(d);
+            power = BitConverter.ToSingle(d,0);
             //data[28..31] for damage
             d[0] = data[28];
             d[1] = data[29];
@@ -642,7 +643,7 @@ namespace Gunbond
             damage = ConvertBytesToInt(d);
         }
         #endregion
-        public MessageType GetMessageType()
+		public MessageType GetMessageType()
         {
             if (data.Length >= 20)
             {
@@ -660,6 +661,7 @@ namespace Gunbond
                     case 253: return MessageType.Join;
                     case 252: return MessageType.Start;
                     case 235: return MessageType.Quit;
+					case 123: return MessageType.InGame;
                     default: return MessageType.Unknown;
                 }
             }

@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010 Express for Windows Phone
+# Visual C# Express 2010
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XNAtutorial", "XNAtutorial\XNAtutorial\XNAtutorial.csproj", "{E701A403-A7B9-45D5-836C-CC11AED060EC}"
 EndProject
-Project("{96E2B04D-8817-42C6-938A-82C39BA4D311}") = "XNAtutorialContent", "XNAtutorial\XNAtutorialContent\XNAtutorialContent.contentproj", "{83BAC333-E8AF-4529-953D-DB43C6EB3239}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XNAtutorialContent", "XNAtutorial\XNAtutorialContent\XNAtutorialContent.contentproj", "{83BAC333-E8AF-4529-953D-DB43C6EB3239}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

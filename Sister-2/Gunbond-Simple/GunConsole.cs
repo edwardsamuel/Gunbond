@@ -548,7 +548,7 @@ namespace Gunbond_Client
             try
             {
                 Logger.WriteLine("Listening thread has just been created.");
-                listenerSocket.Listen((int)obj);
+                listenerSocket.Listen((int) obj);
 
                 AsyncCallback aCallback = new AsyncCallback(AcceptCallback);
                 listenerSocket.BeginAccept(aCallback, listenerSocket);
@@ -671,7 +671,7 @@ namespace Gunbond_Client
                     }
                     else if (requestType == Message.MessageType.KeepAlive)
                     {
-                        //#region Keep Alive
+                        #region Keep Alive
                         //int peerId;
                         //request.GetKeepAlive(out peerId);
                         //if (backPeer != null && backPeer.PeerId == peerId)
@@ -680,7 +680,7 @@ namespace Gunbond_Client
                         //    response = request;
                         //    handler.Send(response.data, 0, response.data.Length, SocketFlags.None);
                         //}
-                        //#endregion
+                        #endregion
                     }
                     else if (requestType == Message.MessageType.NewMember)
                     {
@@ -688,6 +688,7 @@ namespace Gunbond_Client
                         if (IsCreator)
                         {
                             handler.Close();
+                            quit = true;
                         }
                         else
                         {
@@ -705,6 +706,8 @@ namespace Gunbond_Client
                             if (isLast)
                             {
                                 IPEndPoint ipEndPoint = new IPEndPoint(newPeerIp, Configuration.ListenPort);
+                                nextPeerSocket.Close();
+
                                 nextPeerSocket = new Socket(
                                     newPeerIp.AddressFamily,
                                     SocketType.Stream,
@@ -724,9 +727,32 @@ namespace Gunbond_Client
                     }
                     else if (requestType == Message.MessageType.RoomModel)
                     {
+                        #region Room
                         Room room;
                         request.GetRoomModel(out room);
                         Room = room;
+                        #endregion
+                    }
+                    else if (requestType == Message.MessageType.Start)
+                    {
+                        int peerId;
+                        string roomId;
+                        request.GetStart(out peerId, out roomId);
+
+                        Logger.WriteLine("Received START message with PeerId : " + peerId + " RoomId : " + roomId);
+
+                        if (peerId == PeerId)
+                        {
+                            // do nothing
+                            Logger.WriteLine("FINISHED");
+                        }
+                        else
+                        {
+                            // Send NewMember message to next peer
+                            response = request;
+                            nextPeerSocket.Send(response.data, 0, response.data.Length, SocketFlags.None);
+                            Logger.WriteLine("Forward START to " + (nextPeerSocket.RemoteEndPoint as IPEndPoint).Address);
+                        }
                     }
                 }
 
@@ -754,5 +780,11 @@ namespace Gunbond_Client
             }
         }
         #endregion
+
+        public void SEND_START(string str)
+        {
+            Message m = Message.CreateMessageStart(PeerId, str);
+            nextPeerSocket.Send(m.data, 0, m.data.Length, SocketFlags.None);
+        }
     }
 }

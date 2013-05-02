@@ -8,6 +8,7 @@ using Microsoft.Xna.Framework.GamerServices;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Media;
+using Gunbond_Client.Util;
 
 namespace Gunbond_Client
 {
@@ -23,6 +24,17 @@ namespace Gunbond_Client
         {
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
+
+            GunConsole gunConsole = new GunConsole("peerConf.xml");
+            Logger.Active = true;
+            gunConsole.ConnectTracker();
+            //gunConsole.CreateRoom("liluu", 4);
+            var list = gunConsole.ListRooms();
+            Logger.WriteLine(list);
+            if (list != null)
+            {
+                gunConsole.JoinRoom(list[0].roomId);
+            }
         }
 
         /// <summary>

@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gunbond-Client", "Gunbond-C
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gunbond-ClientContent", "Gunbond-Client\Gunbond-ClientContent\Gunbond-ClientContent.contentproj", "{29B5B9D5-AE0F-4815-9F64-D3EA4E9E3408}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gunbond-Simple", "Gunbond-Simple\Gunbond-Simple.csproj", "{04410291-63A4-47EC-8638-D32BAEAEF113}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
@@ -23,6 +25,10 @@ Global
 		{ED42D661-E3A1-4175-A195-847E9DC8903A}.Release|x86.Build.0 = Release|x86
 		{29B5B9D5-AE0F-4815-9F64-D3EA4E9E3408}.Debug|x86.ActiveCfg = Debug|x86
 		{29B5B9D5-AE0F-4815-9F64-D3EA4E9E3408}.Release|x86.ActiveCfg = Release|x86
+		{04410291-63A4-47EC-8638-D32BAEAEF113}.Debug|x86.ActiveCfg = Debug|x86
+		{04410291-63A4-47EC-8638-D32BAEAEF113}.Debug|x86.Build.0 = Debug|x86
+		{04410291-63A4-47EC-8638-D32BAEAEF113}.Release|x86.ActiveCfg = Release|x86
+		{04410291-63A4-47EC-8638-D32BAEAEF113}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

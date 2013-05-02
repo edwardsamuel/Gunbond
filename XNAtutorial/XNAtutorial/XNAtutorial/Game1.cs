@@ -362,33 +362,53 @@ namespace GunbondTheGame
             // Allows the game to exit
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
                 this.Exit();
-            System.Diagnostics.Debug.Write(sizeof(float));
-            System.Diagnostics.Debug.Write("aa");
+            
             //// TODO: Add your update logic here
             //ProcessKeyboard();
-            //if (rocketFlying)
-            //{
-            //    UpdateRocket();
-            //    CheckCollisions(gameTime);
-            //}
-            //base.Update(gameTime);
+            SendMsgDummy();
+            if (rocketFlying)
+            {
+                UpdateRocket();
+                CheckCollisions(gameTime);
+            }
+            base.Update(gameTime);
         }
 
       
 		private void ProcessMessages(Message msg)
         {
-            int xPos; // x position
-            int yPos; // y position
-            int power; // power
-            int angle; // angle
+            float xPos; // x position
+            float yPos; // y position
+            float power; // power
+            float angle; // angle
             int damage; // damage
-            //msg.GetMessageGame(out xPos, out yPos, out angle, out power, out damage);
+            msg.GetMessageGame(out xPos, out yPos, out angle, out power, out damage);
             players[currentPlayer].Position.X = xPos;
             players[currentPlayer].Position.Y = yPos;
             players[currentPlayer].Power = power;
             players[currentPlayer].Angle = angle;
             rocketDamage = damage;
+            System.Diagnostics.Debug.WriteLine("-----------------");
+            System.Diagnostics.Debug.WriteLine("players" + currentPlayer);
+            System.Diagnostics.Debug.WriteLine(players[currentPlayer].Position.X);
+            System.Diagnostics.Debug.WriteLine(players[currentPlayer].Position.Y);
+            System.Diagnostics.Debug.WriteLine(players[currentPlayer].Power);
+            System.Diagnostics.Debug.WriteLine(players[currentPlayer].Angle);
+            System.Diagnostics.Debug.WriteLine(rocketDamage);
+            System.Diagnostics.Debug.WriteLine("-----------------");
         }
+
+        private void SendMsgDummy()
+        {   
+            int i=0;
+            Message msg = Message.CreateMessageGame(1, 0, 10.0f, 100.0f, 10);
+                ProcessMessages(msg);
+            ////Message msg = Message.CreateMessageGame(1, 1, 10);
+            //KeyboardState keybState = Keyboard.GetState();
+            //if (keybState.IsKeyDown(Keys.Space))
+            //ProcessMessages(msg);
+        }
+
 
         private void UpdateRocket()
         {
@@ -499,14 +519,6 @@ namespace GunbondTheGame
                 spriteBatch.Draw(smokeTexture, smokePos, null, Color.White, 0, new Vector2(40, 35), 0.2f, SpriteEffects.None, 1);
         }
 
-		private void SendMsgDummy()
-        {
-            ////Message msg = Message.CreateMessageGame(1, 1, 10);
-            //KeyboardState keybState = Keyboard.GetState();
-            //if (keybState.IsKeyDown(Keys.Space))
-            //ProcessMessages(msg);
-        }
-
         private void ProcessKeyboard()
         {
             KeyboardState keybState = Keyboard.GetState();
@@ -524,6 +536,13 @@ namespace GunbondTheGame
       
             if (keybState.IsKeyDown(Keys.Up))
                 players[currentPlayer].Angle += 0.01f;
+
+            // menggerakkan karakter ke kiri dan kanan dengan left-right arrow
+            if (keybState.IsKeyDown(Keys.Left))
+                players[currentPlayer].Position.X -= 1;
+
+            if (keybState.IsKeyDown(Keys.Right))
+                players[currentPlayer].Position.X += 1;
 
             if (players[currentPlayer].Angle > MathHelper.PiOver2)
                 players[currentPlayer].Angle = -MathHelper.PiOver2;

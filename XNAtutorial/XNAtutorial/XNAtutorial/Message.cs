@@ -400,7 +400,7 @@ namespace GunbondTheGame
         }
 
         #region MessageGame
-        public static Message CreateMessageGame(int x, int y, float angle, float power, int damage)
+        public static Message CreateMessageGame(float x, float y, float angle, float power, int damage)
         {
             byte[] data = new byte[32];
             FillHeader(data);
@@ -416,13 +416,13 @@ namespace GunbondTheGame
             //data[9] = (byte)'M';
             //data[10] = (byte)'E';
             //data[11..14] for x position
-            byte[] temp = ConvertIntToByte(x);
+            byte[] temp = BitConverter.GetBytes(x);
             data[11] = temp[0];
             data[12] = temp[1];
             data[13] = temp[2];
             data[14] = temp[3];
             //data[15..18] for y position
-            byte[] temp2 = ConvertIntToByte(y);
+            byte[] temp2 = BitConverter.GetBytes(y);
             data[15] = temp2[0];
             data[16] = temp2[1];
             data[17] = temp2[2];
@@ -608,7 +608,7 @@ namespace GunbondTheGame
         }
 
         #region GetMessageGame
-        public void GetMessageGame(out int x, out int y, out float angle, out float power, out int damage)
+        public void GetMessageGame(out float x, out float y, out float angle, out float power, out int damage)
         {
             byte[] d = new byte[4];
             //data[11..14] for x position
@@ -616,24 +616,24 @@ namespace GunbondTheGame
             d[1] = data[12];
             d[2] = data[13];
             d[3] = data[14];
-            x = ConvertBytesToInt(d);
+            x = BitConverter.ToSingle(d,0);
             //data[15..18] for y position
             d[0] = data[15];
             d[1] = data[16];
             d[2] = data[17];
             d[3] = data[18];
-            y = ConvertBytesToInt(d);
+            y = BitConverter.ToSingle(d,0);
             //data[20..23] for angle
-            d[0] = data[19];
-            d[1] = data[20];
-            d[2] = data[21];
-            d[3] = data[22];
+            d[0] = data[20];
+            d[1] = data[21];
+            d[2] = data[22];
+            d[3] = data[23];
             angle = BitConverter.ToSingle(d,0);
             //data[24..27] for power
-            d[0] = data[19];
-            d[1] = data[20];
-            d[2] = data[21];
-            d[3] = data[22];
+            d[0] = data[24];
+            d[1] = data[25];
+            d[2] = data[26];
+            d[3] = data[27];
             power = BitConverter.ToSingle(d,0);
             //data[28..31] for damage
             d[0] = data[28];

@@ -17,7 +17,9 @@ namespace GunbondTheGame
         public Color Color;
         public float Angle;
         public float Power;
-        public float Health;        public Texture2D carriageTexture;    }
+        public float Health;        
+        public Texture2D carriageTexture;    
+    }
 
     /// <summary>
     /// This is the main type for your game
@@ -29,7 +31,6 @@ namespace GunbondTheGame
         GraphicsDevice device;
         Texture2D backgroundTexture;
         Texture2D foregroundTexture;
-        Texture2D carriageTexture;
         Texture2D cannonTexture;
         Texture2D rocketTexture;
         Texture2D smokeTexture;
@@ -92,14 +93,12 @@ namespace GunbondTheGame
 
         private void SetUpPlayers()
             // initializes array of PlayerData objects
-
-
         {            
             players = new PlayerData[numberOfPlayers];
             for (int i = 0; i < numberOfPlayers; i++)
             {
                 players[i].IsAlive = true;
-                players[i].Color = playerColors[i];
+                //players[i].Color = playerColors[i];
                 players[i].carriageTexture = carriageTexture[i];
                 players[i].Angle = MathHelper.ToRadians(90);
                 players[i].Power = 100;

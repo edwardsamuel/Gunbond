@@ -18,6 +18,7 @@ namespace GunbondTheGame
         public Color Color;
         public float Angle;
         public float Power;
+        public Texture2D carriageTexture;
     }
 
     /// <summary>
@@ -30,7 +31,6 @@ namespace GunbondTheGame
         GraphicsDevice device;
         Texture2D backgroundTexture;
         Texture2D foregroundTexture;
-        Texture2D carriageTexture;
         Texture2D cannonTexture;
         Texture2D rocketTexture;
         Texture2D smokeTexture;
@@ -39,10 +39,13 @@ namespace GunbondTheGame
         int screenHeight;
         float playerScaling;
         int currentPlayer = 0;
-        SpriteFont font;
+        SpriteFont font;        
 
         PlayerData[] players;
         int numberOfPlayers = 4;
+        // array of carriageTexture
+        Texture2D[] carriageTexture = new Texture2D[8];
+
 
         // rocket:
         bool rocketFlying = false;
@@ -80,8 +83,8 @@ namespace GunbondTheGame
         {
             // TODO: Add your initialization logic here
             // set size of backbuffer, which contain what will be drawn to the screen
-            graphics.PreferredBackBufferWidth = 500; 
-            graphics.PreferredBackBufferHeight = 500;
+            graphics.PreferredBackBufferWidth = 680; 
+            graphics.PreferredBackBufferHeight = 680;
 
             graphics.IsFullScreen = false;
             graphics.ApplyChanges();
@@ -91,24 +94,12 @@ namespace GunbondTheGame
 
         private void SetUpPlayers()
             // initializes array of PlayerData objects
-        {
-            Color[] playerColors = new Color[10];
-            playerColors[0] = Color.Red;
-            playerColors[1] = Color.Green;
-            playerColors[2] = Color.Blue;
-            playerColors[3] = Color.Purple;
-            playerColors[4] = Color.Orange;
-            playerColors[5] = Color.Indigo;
-            playerColors[6] = Color.Yellow;
-            playerColors[7] = Color.SaddleBrown;
-            playerColors[8] = Color.Tomato;
-            playerColors[9] = Color.Turquoise;
-
+        {            
             players = new PlayerData[numberOfPlayers];
             for (int i = 0; i < numberOfPlayers; i++)
             {
                 players[i].IsAlive = true;
-                players[i].Color = playerColors[i];
+                players[i].carriageTexture = carriageTexture[i];
                 players[i].Angle = MathHelper.ToRadians(90);
                 players[i].Power = 100;
                 players[i].Position = new Vector2();
@@ -128,7 +119,7 @@ namespace GunbondTheGame
             device = graphics.GraphicsDevice;
 
             // linking variable backgroundTexture to an img named "background"
-            backgroundTexture = Content.Load<Texture2D>("background");
+            backgroundTexture = Content.Load<Texture2D>("bg_blue");
 
             // linking variable foregroundTexture to an img named "foreground"
             // foregroundTexture = Content.Load<Texture2D>("foreground");
@@ -136,10 +127,18 @@ namespace GunbondTheGame
             screenHeight = device.PresentationParameters.BackBufferHeight;
             screenWidth = device.PresentationParameters.BackBufferWidth;
 
-            carriageTexture = Content.Load<Texture2D>("carriage");
+            // array of CariageTexture
+            carriageTexture[0] = Content.Load<Texture2D>("P1");
+            carriageTexture[1] = Content.Load<Texture2D>("P2");
+            carriageTexture[2] = Content.Load<Texture2D>("P3");
+            carriageTexture[3] = Content.Load<Texture2D>("P4");
+            carriageTexture[4] = Content.Load<Texture2D>("P5");
+            carriageTexture[5] = Content.Load<Texture2D>("P6");
+            carriageTexture[6] = Content.Load<Texture2D>("P7");
+            carriageTexture[7] = Content.Load<Texture2D>("P8");
             cannonTexture = Content.Load<Texture2D>("cannon");
 
-            playerScaling = 40.0f / (float)carriageTexture.Width;
+            playerScaling = 50.0f / (float)carriageTexture[0].Width;
 
             font = Content.Load<SpriteFont>("myFont");
 
@@ -153,7 +152,7 @@ namespace GunbondTheGame
             CreateForeground();
 
             rocketColorArray = TextureTo2DArray(rocketTexture);
-            carriageColorArray = TextureTo2DArray(carriageTexture);
+            carriageColorArray = TextureTo2DArray(players[0].carriageTexture);
             cannonColorArray = TextureTo2DArray(cannonTexture);
             // TODO: use this.Content to load your game content here
         }
@@ -173,10 +172,10 @@ namespace GunbondTheGame
 
             double rand1 = randomizer.NextDouble() + 1;
             double rand2 = randomizer.NextDouble() + 2;
-            double rand3 = randomizer.NextDouble() + 3;
+            double rand3 = randomizer.NextDouble() + 5;
 
-            float offset = screenHeight / 2;
-            float peakheight = 100;
+            float offset = screenHeight*(float)(0.6);
+            float peakheight = 80;
             float flatness = 70;
 
             for (int x = 0; x < screenWidth; x++)
@@ -281,7 +280,7 @@ namespace GunbondTheGame
                         int xPos = (int)player.Position.X;
                         int yPos = (int)player.Position.Y;
 
-                        Matrix carriageMat = Matrix.CreateTranslation(0, -carriageTexture.Height, 0) * Matrix.CreateScale(playerScaling) * Matrix.CreateTranslation(xPos, yPos, 0);
+                        Matrix carriageMat = Matrix.CreateTranslation(0, -player.carriageTexture.Height, 0) * Matrix.CreateScale(playerScaling) * Matrix.CreateTranslation(xPos, yPos, 0);
                         Vector2 carriageCollisionPoint = TexturesCollide(carriageColorArray, carriageMat, rocketColorArray, rocketMat);                        
                         if (carriageCollisionPoint.X > -1)
                         {
@@ -449,9 +448,9 @@ namespace GunbondTheGame
                     int yPos = (int)player.Position.Y;
                     Vector2 cannonOrigin = new Vector2(11, 50);
 
-                    spriteBatch.Draw(cannonTexture, new Vector2(xPos+20, yPos-10), null, player.Color, player.Angle, cannonOrigin, playerScaling, SpriteEffects.None, 1);
+                    spriteBatch.Draw(cannonTexture, new Vector2(xPos+20, yPos-10), null, Color.Red, player.Angle, cannonOrigin, playerScaling, SpriteEffects.None, 1);                    
 
-                    spriteBatch.Draw(carriageTexture, player.Position, null, player.Color, 0, new Vector2(0, carriageTexture.Height), playerScaling, SpriteEffects.None, 0); 
+                    spriteBatch.Draw(player.carriageTexture, player.Position, null, Color.White, 0, new Vector2(0, player.carriageTexture.Height), playerScaling, SpriteEffects.None, 0); 
                 }
             }
         }
@@ -460,7 +459,7 @@ namespace GunbondTheGame
         {
             PlayerData player = players[currentPlayer];
             int currentAngle = (int)MathHelper.ToDegrees(player.Angle);
-            spriteBatch.DrawString(font, "Cannon angle: " + currentAngle.ToString(), new Vector2(20,20), player.Color);
+            spriteBatch.DrawString(font, "Cannon angle: " + currentAngle.ToString(), new Vector2(20,20), Color.Black);
             spriteBatch.DrawString(font, "Cannon power: " + player.Power.ToString(), new Vector2(20, 45), Color.White);
         }
 
@@ -468,7 +467,7 @@ namespace GunbondTheGame
         {
             if (rocketFlying)
             {
-                spriteBatch.Draw(rocketTexture, rocketPosition, null, players[currentPlayer].Color, rocketAngle, new Vector2(42,240), 0.1f, SpriteEffects.None, 1);
+                spriteBatch.Draw(rocketTexture, rocketPosition, null, Color.White, rocketAngle, new Vector2(42,240), 0.1f, SpriteEffects.None, 1);
             }
         }
 

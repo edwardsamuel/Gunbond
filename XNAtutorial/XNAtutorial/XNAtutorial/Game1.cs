@@ -17,10 +17,10 @@ namespace GunbondTheGame
         public Color Color;
         public float Angle;
         public float Power;
-        public float Health;        
-        public Texture2D carriageTexture;    
+        public float Health;
+        public Texture2D carriageTexture;
     }
-
+    
     /// <summary>
     /// This is the main type for your game
     /// </summary>

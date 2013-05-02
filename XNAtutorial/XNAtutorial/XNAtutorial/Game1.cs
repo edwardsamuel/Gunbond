@@ -17,10 +17,10 @@ namespace GunbondTheGame
         public Color Color;
         public float Angle;
         public float Power;
-        public float Health;        
-        public Texture2D carriageTexture;    
+        public float Health;
+        public Texture2D carriageTexture;
     }
-
+    
     /// <summary>
     /// This is the main type for your game
     /// </summary>
@@ -70,6 +70,7 @@ namespace GunbondTheGame
         {
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
+            IsMouseVisible = true;
         }
 
         /// <summary>
@@ -102,6 +103,7 @@ namespace GunbondTheGame
                 players[i].carriageTexture = carriageTexture[i];
                 players[i].Angle = MathHelper.ToRadians(90);
                 players[i].Power = 100;
+                players[i].Health = 500;
                 players[i].Position = new Vector2();
                 players[i].Position.X = screenWidth / (numberOfPlayers + 1) * (i + 1);
                 players[i].Position.Y = terrainContour[(int)players[i].Position.X];
@@ -285,7 +287,11 @@ namespace GunbondTheGame
                         Vector2 carriageCollisionPoint = TexturesCollide(carriageColorArray, carriageMat, rocketColorArray, rocketMat);                        
                         if (carriageCollisionPoint.X > -1)
                         {
-                            players[i].IsAlive = false;
+                            players[i].Health -= players[currentPlayer].Power / 3;
+                            if (players[i].Health == 0)
+                            {
+                                players[i].IsAlive = false;
+                            }                            
                             return carriageCollisionPoint;
                         }
 
@@ -293,7 +299,11 @@ namespace GunbondTheGame
                         Vector2 cannonCollisionPoint = TexturesCollide(cannonColorArray, cannonMat, rocketColorArray, rocketMat);
                         if (cannonCollisionPoint.X > -1)
                         {
-                            players[i].IsAlive = false;
+                            players[i].Health -= players[currentPlayer].Power;
+                            if (players[i].Health == 0)
+                            {
+                                players[i].IsAlive = false;
+                            } 
                             return cannonCollisionPoint;
                         }
                     }
@@ -363,6 +373,13 @@ namespace GunbondTheGame
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
                 this.Exit();
             
+            ProcessKeyboard();
+            if (rocketFlying)
+            {
+                UpdateRocket();
+                CheckCollisions(gameTime);
+            }
+            base.Update(gameTime);
             //// TODO: Add your update logic here
             //ProcessKeyboard();
             SendMsgDummy();
@@ -371,10 +388,10 @@ namespace GunbondTheGame
                 UpdateRocket();
                 CheckCollisions(gameTime);
             }
-            base.Update(gameTime);
-        }
+            base.Update(gameTime);        }
 
       
+
 		private void ProcessMessages(Message msg)
         {
             float xPos; // x position
@@ -397,7 +414,6 @@ namespace GunbondTheGame
             System.Diagnostics.Debug.WriteLine(rocketDamage);
             System.Diagnostics.Debug.WriteLine("-----------------");
         }
-
         private void SendMsgDummy()
         {   
             int i=0;
@@ -453,7 +469,8 @@ namespace GunbondTheGame
             // starting the spriteBatch first before drawing images
             spriteBatch.Begin();
             DrawScenery();
-            DrawPlayers();
+            DrawCannon();
+            DrawPlayers();            
             DrawText();
             DrawRocket();
             DrawSmoke();
@@ -484,15 +501,21 @@ namespace GunbondTheGame
                 {
                     int xPos = (int)player.Position.X;
                     int yPos = (int)player.Position.Y;
-                    Vector2 cannonOrigin = new Vector2(11, 50);
 
-             
-                    spriteBatch.Draw(cannonTexture, new Vector2(xPos+20, yPos-10), null, Color.Red, player.Angle, cannonOrigin, playerScaling, SpriteEffects.None, 1);                    
 
-        
-                    spriteBatch.Draw(player.carriageTexture, player.Position, null, Color.White, 0, new Vector2(0, player.carriageTexture.Height), playerScaling, SpriteEffects.None, 0); 
+
+
                 }
             }
+        }
+
+        private void DrawCannon()
+        {
+            PlayerData player = players[currentPlayer];
+            int xPos = (int)player.Position.X;
+            int yPos = (int)player.Position.Y;
+            Vector2 cannonOrigin = new Vector2(11, 60);
+            spriteBatch.Draw(cannonTexture, new Vector2(xPos + 25, yPos - 20), null, Color.Red, player.Angle, cannonOrigin, 0.7f, SpriteEffects.None, 1);
         }
 
         private void DrawText()
@@ -502,6 +525,7 @@ namespace GunbondTheGame
      
             spriteBatch.DrawString(font, "Cannon angle: " + currentAngle.ToString(), new Vector2(20,20), Color.Black);
             spriteBatch.DrawString(font, "Cannon power: " + player.Power.ToString(), new Vector2(20, 45), Color.White);
+            spriteBatch.DrawString(font, "Life: " + player.Health.ToString(), new Vector2(20, 65), Color.Black);
         }
 
         private void DrawRocket()
@@ -543,7 +567,6 @@ namespace GunbondTheGame
 
             if (keybState.IsKeyDown(Keys.Right))
                 players[currentPlayer].Position.X += 1;
-
             if (players[currentPlayer].Angle > MathHelper.PiOver2)
                 players[currentPlayer].Angle = -MathHelper.PiOver2;
             if (players[currentPlayer].Angle < -MathHelper.PiOver2)
@@ -553,9 +576,8 @@ namespace GunbondTheGame
                 players[currentPlayer].Power -= 20;
             if (keybState.IsKeyDown(Keys.PageUp))
                 players[currentPlayer].Power += 20;
-
-            if (players[currentPlayer].Power > 1000)
-                players[currentPlayer].Power = 1000;
+            if (players[currentPlayer].Power > 500)
+                players[currentPlayer].Power = 500;
             if (players[currentPlayer].Power < 0)
                 players[currentPlayer].Power = 0;
 

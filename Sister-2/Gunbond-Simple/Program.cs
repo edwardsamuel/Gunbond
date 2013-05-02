@@ -23,9 +23,11 @@ namespace Gunbond_Client
             }
             Console.ReadLine();
             gunConsole.SEND_START(">>>" + gunConsole.PeerId + "<<<");
-            Console.ReadLine();
             gunConsole.SEND_START("???" + gunConsole.PeerId + "???");
+            gunConsole.SEND_START("///" + gunConsole.PeerId + "\\\\\\");
             Console.ReadLine();
+            gunConsole.SEND_START(">>>" + gunConsole.PeerId + "<<<");
+            gunConsole.SEND_START("???" + gunConsole.PeerId + "???");
             gunConsole.SEND_START("///" + gunConsole.PeerId + "\\\\\\");
             Console.ReadLine();
         }

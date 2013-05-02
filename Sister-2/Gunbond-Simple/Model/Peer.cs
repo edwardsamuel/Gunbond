@@ -8,11 +8,11 @@ namespace Gunbond_Client.Model
 {
     public class Peer
     {
-        private IPAddress ip;
-        public IPAddress IP
+        #region Properties
+        public IPAddress IPAddress
         {
-            get { return ip; }
-            set { ip = value; }
+            get;
+            set;
         }
 
         public int PeerId
@@ -21,30 +21,18 @@ namespace Gunbond_Client.Model
             set;
         }
 
-        public Peer(int id, IPAddress ip)
+        public int ListeningPort
         {
-            this.PeerId = id;
-            this.ip = ip;
+            get;
+            set;
         }
+        #endregion
 
-        /*public Peer(byte[] id_and_ip)
+        public Peer(int peerId, IPAddress IPAddress, int listeningPort)
         {
-            byte[] temp = new byte[4];
-            Buffer.BlockCopy(id_and_ip, 0, temp, 0, 4);
-
-            if (BitConverter.IsLittleEndian)
-                Array.Reverse(temp);
-
-            this.PeerId =  BitConverter.ToInt32(temp, 0);
-
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < 4; ++i)
-            {
-                sb.Append(id_and_ip[4 + i] + ".");
-            }
-            sb.Remove(sb.Length - 1, 1);
-
-            IPAddress.TryParse(sb.ToString(), out this.ip);
-        }*/
+            this.PeerId = peerId;
+            this.IPAddress = IPAddress;
+            this.ListeningPort = listeningPort;
+        }
     }
 }

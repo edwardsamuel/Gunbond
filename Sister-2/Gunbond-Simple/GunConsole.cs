@@ -274,17 +274,20 @@ namespace Gunbond_Client
             {
                 if (IsConnected && !IsInRoom)
                 {
-                    byte[] buffer = new byte[1024];
                     Logger.WriteLine("Requesting to create room");
-                    Message messageOut = Message.CreateMessageCreate(PeerId, maxPlayers, roomId);
-                    trackerSocket.Send(messageOut.data, 0, messageOut.data.Length, SocketFlags.None);
+
+                    byte[] buffer = new byte[1024];
+                    Message request = Message.CreateMessageCreate(PeerId, maxPlayers, roomId, Configuration.ListenPort);
+                    trackerSocket.Send(request.data, 0, request.data.Length, SocketFlags.None);
                     trackerSocket.Receive(buffer, buffer.Length, SocketFlags.None);
-                    Message messageIn = new Message(buffer);
-                    if (messageIn.GetMessageType() == Message.MessageType.Success)
+
+                    Message response = new Message(buffer);
+                    Message.MessageType responseType = response.GetMessageType();
+                    if (responseType == Message.MessageType.Success)
                     {
                         Logger.WriteLine("Request create room success");
 
-                        Room = new Room(roomId, new Peer(PeerId, (trackerSocket.LocalEndPoint as IPEndPoint).Address), maxPlayers);
+                        Room = new Room(roomId, new Peer(PeerId, (trackerSocket.LocalEndPoint as IPEndPoint).Address, Configuration.ListenPort), maxPlayers);
                         Room.Members.Add(Room.Creator);
 
                         IsInRoom = true;
@@ -292,7 +295,7 @@ namespace Gunbond_Client
 
                         return true;
                     }
-                    else if (messageIn.GetMessageType() == Message.MessageType.Failed)
+                    else if (responseType == Message.MessageType.Failed)
                     {
                         Logger.WriteLine("Request create room failed.");
                         return false;
@@ -369,73 +372,65 @@ namespace Gunbond_Client
                 if ((IsConnected) && (!IsInRoom))
                 {
                     Logger.WriteLine("Requesting to join room");
-                    Message messageOut = Message.CreateMessageJoin(PeerId, roomId);
+                    Message request = Message.CreateMessageJoin(PeerId, roomId, Configuration.ListenPort);
                     byte[] buffer = new byte[1024];
-
-                    trackerSocket.Send(messageOut.data, 0, messageOut.data.Length, SocketFlags.None);
+                    trackerSocket.Send(request.data, 0, request.data.Length, SocketFlags.None);
                     trackerSocket.Receive(buffer, buffer.Length, SocketFlags.None);
-                    Message messageIn = new Message(buffer);
-                    Message.MessageType messageType = messageIn.GetMessageType();
-                    if (messageType == Message.MessageType.CreatorInfo)
+
+                    Message response = new Message(buffer);
+                    Message.MessageType responseType = response.GetMessageType();
+                    if (responseType == Message.MessageType.CreatorInfo)
                     {
-                        string ip;
+                        IPAddress ip;
                         int port;
-                        messageIn.GetCreatorInfo(out ip, out port);
+                        response.GetCreatorInfo(out ip, out port);
+
                         Logger.WriteLine("GunbondPeer (Peer - Tracker): Creator Info");
                         Logger.WriteLine("Hostname: " + ip);
                         Logger.WriteLine("Port    : " + port);
 
                         SocketPermission permission = new SocketPermission(
-                                NetworkAccess.Connect,
-                                TransportType.Tcp,
-                                "",
-                                SocketPermission.AllPorts
-                                );
-
+                             NetworkAccess.Connect,
+                             TransportType.Tcp,
+                             "",
+                             SocketPermission.AllPorts
+                             );
                         permission.Demand();
-                        IPAddress server_addr;
 
-                        if (IPAddress.TryParse(ip, out server_addr))
+                        IPEndPoint ipEndPoint = new IPEndPoint(ip, Configuration.ListenPort);
+                        nextPeerSocket = new Socket(
+                            ip.AddressFamily,
+                            SocketType.Stream,
+                            ProtocolType.Tcp
+                            );
+
+                        nextPeerSocket.NoDelay = false;
+                        nextPeerSocket.Connect(ipEndPoint);
+                        Message messageConnectToCreator = Message.CreateMessageHandshakeTracker(PeerId);
+
+                        byte[] bufferFromCreator = new byte[1024];
+
+                        nextPeerSocket.Send(messageConnectToCreator.data, 0, messageConnectToCreator.data.Length, SocketFlags.None);
+                        nextPeerSocket.Receive(bufferFromCreator, bufferFromCreator.Length, SocketFlags.None);
+
+                        Message messageFromCreator = new Message(bufferFromCreator);
+                        Message.MessageType fromCreatorMessageType = messageFromCreator.GetMessageType();
+                        if (fromCreatorMessageType == Message.MessageType.Success)
                         {
-                            IPEndPoint ipEndPoint = new IPEndPoint(server_addr, Configuration.ListenPort);
-                            nextPeerSocket = new Socket(
-                                server_addr.AddressFamily,
-                                SocketType.Stream,
-                                ProtocolType.Tcp
-                               );
+                            IsInRoom = true;
+                            IsCreator = false;
 
-                            nextPeerSocket.NoDelay = false;
-                            nextPeerSocket.Connect(ipEndPoint);
-                            Message messageConnectToCreator = Message.CreateMessageHandshakeTracker(PeerId);
-
-                            byte[] bufferFromCreator = new byte[1024];
-
-                            nextPeerSocket.Send(messageConnectToCreator.data, 0, messageConnectToCreator.data.Length, SocketFlags.None);
-                            nextPeerSocket.Receive(bufferFromCreator, bufferFromCreator.Length, SocketFlags.None);
-
-                            Message messageFromCreator = new Message(bufferFromCreator);
-                            Message.MessageType fromCreatorMessageType = messageFromCreator.GetMessageType();
-                            if (fromCreatorMessageType == Message.MessageType.Success)
-                            {
-                                IsInRoom = true;
-                                IsCreator = false;
-
-                                Logger.WriteLine("Successfully joined room.");
-                                return true;
-                            }
-                            else
-                            {
-                                Logger.WriteLine("Request join room failed 1.");
-                                return false;
-                            }
+                            Logger.WriteLine("Successfully joined room.");
+                            return true;
                         }
                         else
                         {
+                            Logger.WriteLine("Request join room failed 1.");
                             return false;
                         }
-                    }
 
-                    else if (messageType == Message.MessageType.Failed)
+                    }
+                    else if (responseType == Message.MessageType.Failed)
                     {
                         Console.WriteLine("Request join room failed 2.");
                         return false;
@@ -548,7 +543,7 @@ namespace Gunbond_Client
             try
             {
                 Logger.WriteLine("Listening thread has just been created.");
-                listenerSocket.Listen((int) obj);
+                listenerSocket.Listen((int)obj);
 
                 AsyncCallback aCallback = new AsyncCallback(AcceptCallback);
                 listenerSocket.BeginAccept(aCallback, listenerSocket);
@@ -608,7 +603,7 @@ namespace Gunbond_Client
             try
             {
                 object[] obj = new object[2];
-                obj = (object[]) target.AsyncState;
+                obj = (object[])target.AsyncState;
                 byte[] buffer = (byte[])obj[0];
                 Socket handler = (Socket)obj[1];
 
@@ -621,15 +616,15 @@ namespace Gunbond_Client
                     Message response;
 
                     Message.MessageType requestType = request.GetMessageType();
-                    if (requestType == Message.MessageType.HandshakeTracker) // Peer client mau join ke room ini
+                    if (requestType == Message.MessageType.HandshakePeerCreator) // Peer client mau join ke room ini
                     {
                         #region Joining Room (Handshake)
                         if (Room.Members.Count < Room.MaxPlayer)
                         {
-                            int newPeerId;
+                            int newPeerId, newPeerListenPort;
                             IPAddress newPeerIp = (handler.RemoteEndPoint as IPEndPoint).Address;
-                            request.GetHandshakeTracker(out newPeerId);
-                            Room.Members.Add(new Peer(newPeerId, newPeerIp));
+                            request.GetHandshakePeerCreator(out newPeerId, out newPeerListenPort);
+                            Room.Members.Add(new Peer(newPeerId, newPeerIp, newPeerListenPort));
 
                             // Send SUCCESS message
                             response = Message.CreateMessageSuccess();
@@ -638,7 +633,7 @@ namespace Gunbond_Client
                             if (nextPeerSocket != null)
                             {
                                 // Send NewMember message to next peer
-                                response = Message.CreateMessageNewMember(newPeerId, (handler.RemoteEndPoint as IPEndPoint).Address);
+                                response = Message.CreateMessageNewMember(newPeerId, (handler.RemoteEndPoint as IPEndPoint).Address, newPeerListenPort);
                                 nextPeerSocket.Send(response.data, 0, response.data.Length, SocketFlags.None);
                             }
                             else
@@ -694,10 +689,10 @@ namespace Gunbond_Client
                         {
                             bool isLast = Room.Members.Last().PeerId == PeerId;
 
-                            int newPeerId;
+                            int newPeerId, newPeerListenPort;
                             IPAddress newPeerIp;
-                            request.GetNewMember(out newPeerId, out newPeerIp);
-                            Room.Members.Add(new Peer(newPeerId, newPeerIp));
+                            request.GetNewMember(out newPeerId, out newPeerIp, out newPeerListenPort);
+                            Room.Members.Add(new Peer(newPeerId, newPeerIp, newPeerListenPort));
 
                             Logger.WriteLine("Tell new candidate to next peer");
                             response = request;
@@ -717,7 +712,7 @@ namespace Gunbond_Client
                                 nextPeerSocket.NoDelay = false;
                                 nextPeerSocket.Connect(ipEndPoint);
 
-                                Logger.WriteLine("Your next has been changed to "+ newPeerIp);
+                                Logger.WriteLine("Your next has been changed to " + newPeerIp);
 
                                 response = Message.CreateMessageRoomModel(Room);
                                 nextPeerSocket.Send(response.data, 0, response.data.Length, SocketFlags.None);

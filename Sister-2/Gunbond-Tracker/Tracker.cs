@@ -51,7 +51,7 @@ namespace Gunbond_Tracker
             set;
         }
 
-        public string IpAddress
+        public string IPAddress
         {
             get;
             set;
@@ -112,9 +112,9 @@ namespace Gunbond_Tracker
                                             Port = Int32.Parse(reader.ReadString());
                                             break;
                                         }
-                                    case "IpAddress":
+                                    case "IPAddress":
                                         {
-                                            IpAddress = reader.ReadString();
+                                            IPAddress = reader.ReadString();
                                             break;
                                         }
                                 }
@@ -133,7 +133,7 @@ namespace Gunbond_Tracker
                 Backlog = 10000;
                 MaxTimeout = 30000;
                 Port = 9351;
-                IpAddress = "127.0.0.1";
+                IPAddress = "127.0.0.1";
             }
         }
 
@@ -143,7 +143,7 @@ namespace Gunbond_Tracker
             writer.WriteStartDocument();
             writer.WriteStartElement("Config");
 
-            writer.WriteElementString("IpAddress", IpAddress.ToString());
+            writer.WriteElementString("IPAddress", IPAddress.ToString());
             writer.WriteElementString("MaxPeer", MaxPeer.ToString());
             writer.WriteElementString("MaxRoom", MaxRoom.ToString());
             writer.WriteElementString("Log", (Log) ? "on" : "off");
@@ -160,11 +160,13 @@ namespace Gunbond_Tracker
 
         public void Print()
         {
-            Logger.WriteLine("Current Settings:");
-            Logger.WriteLine("Max Peer\t\t: " + MaxPeer);
-            Logger.WriteLine("Max Room\t\t: " + MaxRoom);
-            string log_state = (Log) ? "on" : "off";
-            Logger.WriteLine("Log\t\t\t: " + log_state);
+            Logger.WriteLine("IPAddress    : " + IPAddress.ToString());
+            Logger.WriteLine("Port         : " + Port.ToString());
+            Logger.WriteLine("MaxPeer      : " + MaxPeer.ToString());
+            Logger.WriteLine("MaxRoom      : " + MaxRoom.ToString());
+            Logger.WriteLine("Log          : " + ((Log) ? "on" : "off"));
+            Logger.WriteLine("Backlog      : " + Backlog.ToString());
+            Logger.WriteLine("MaxTimeout   : " + MaxTimeout.ToString());
             Logger.WriteLine();
         }
     }
@@ -180,6 +182,7 @@ namespace Gunbond_Tracker
         #endregion
 
         private Random random = new Random();
+        
         public Socket listener;
         public Dictionary<int, Peer> peers;
         public Dictionary<String, Room> rooms;
@@ -193,7 +196,7 @@ namespace Gunbond_Tracker
             rooms = new Dictionary<string, Room>();
 
             // Listening on socket
-            IPAddress ipAddr = IPAddress.Parse(Configuration.IpAddress);
+            IPAddress ipAddr = IPAddress.Parse(Configuration.IPAddress);
             IPEndPoint ipEndPoint = new IPEndPoint(ipAddr, Configuration.Port);
             SocketPermission permission = new SocketPermission(NetworkAccess.Accept, TransportType.Tcp, "", Configuration.Port);
             permission.Demand();
@@ -226,7 +229,7 @@ namespace Gunbond_Tracker
                 Socket handler = null;
 
                 byte[] buffer = new byte[1024];
-                slistener = (Socket)result.AsyncState;
+                slistener = (Socket) result.AsyncState;
                 handler = slistener.EndAccept(result);
                 handler.NoDelay = false;
 
@@ -250,7 +253,7 @@ namespace Gunbond_Tracker
 
                 if (!nextAsyncResult.AsyncWaitHandle.WaitOne(Configuration.MaxTimeout))
                 {
-                    Logger.WriteLine("Connection timeout for peer with IP Address " + (handler.RemoteEndPoint as IPEndPoint).Address + ":" + (handler.RemoteEndPoint as IPEndPoint).Port);
+                    Logger.WriteLine("Connection timeout for peer with IP Address " + (handler.LocalEndPoint as IPEndPoint).Address + ":" + (handler.LocalEndPoint as IPEndPoint).Port + " -> " + (handler.RemoteEndPoint as IPEndPoint).Address + ":" + (handler.RemoteEndPoint as IPEndPoint).Port);
                     handler.EndReceive(result);
                     handler.Close();
                 }
@@ -333,9 +336,9 @@ namespace Gunbond_Tracker
                     else if (requestType == Message.MessageType.CreateRoom)
                     {
                         #region Create Room
-                        int peerId, maxPlayers;
+                        int peerId, maxPlayers, listenPort;
                         string roomId;
-                        request.GetCreate(out peerId, out maxPlayers, out roomId);
+                        request.GetCreate(out peerId, out maxPlayers, out roomId, out listenPort);
 
                         Peer peer;
                         if (peers.TryGetValue(peerId, out peer))
@@ -343,7 +346,7 @@ namespace Gunbond_Tracker
                             Room room;
                             if (!rooms.TryGetValue(roomId, out room))
                             {
-                                room = new Room(roomId, peer, maxPlayers);
+                                room = new Room(roomId, peer, maxPlayers, listenPort);
                                 rooms.Add(roomId, room);
                                 Logger.WriteLine("Create room request is sent by peer " + peer + " for room " + room);
 
@@ -413,7 +416,7 @@ namespace Gunbond_Tracker
                                 Logger.WriteLine("Join room request is sent by Peer " + peer + " for Room " + room);
 
                                 // send IP address back to peer
-                                response = Message.CreateMessageCreatorInfo(room.Creator.IpAddress.ToString(), 0);
+                                response = Message.CreateMessageCreatorInfo(room.Creator.IpAddress, room.ListenPort);
                                 handler.Send(response.data, 0, response.data.Length, SocketFlags.None);
                             }
                             else
@@ -510,7 +513,7 @@ namespace Gunbond_Tracker
 
                     if (!nextAsyncResult.AsyncWaitHandle.WaitOne(Configuration.MaxTimeout))
                     {
-                        Logger.WriteLine("Connection timeout for peer with IP Address " + (handler.RemoteEndPoint as IPEndPoint).Address);
+                        Logger.WriteLine("Connection timeout for peer with IP Address " + (handler.LocalEndPoint as IPEndPoint).Address + ":" + (handler.LocalEndPoint as IPEndPoint).Port + " -> " + (handler.RemoteEndPoint as IPEndPoint).Address + ":" + (handler.RemoteEndPoint as IPEndPoint).Port);
 
                         // find peer id
                         int peerId = 0;
@@ -528,7 +531,6 @@ namespace Gunbond_Tracker
                     }
                     #endregion
                 }
-
             }
             catch (SocketException exc)
             {

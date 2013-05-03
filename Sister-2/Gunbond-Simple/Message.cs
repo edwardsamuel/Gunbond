@@ -178,7 +178,7 @@ namespace Gunbond
 
         public static Message CreateMessageHandshakePeerCreator(int peerId, int listeningPort)
         {
-            byte[] data = new byte[24];
+            byte[] data = new byte[28];
             FillHeader(data);
             data[19] = 137;
 
@@ -284,10 +284,10 @@ namespace Gunbond
             return new Message(data);
         }
 
-        public static Message CreateMessageJoin(int peerId, String roomId, int listeningPort)
+        public static Message CreateMessageJoin(int peerId, String roomId)
         {
             // Create buffer data
-            byte[] data = new byte[78];
+            byte[] data = new byte[74];
 
             // Fill with static header data
             FillHeader(data);
@@ -300,10 +300,7 @@ namespace Gunbond
 
             byte[] bRoomId = ConvertStringToBytes(roomId, 50);
             Buffer.BlockCopy(bRoomId, 0, data, 24, 50);
-
-            byte[] bListeningPort = ConvertIntToBytes(listeningPort);
-            Buffer.BlockCopy(bListeningPort, 0, data, 74, 4);
-
+            
             return new Message(data);
         }
 
@@ -418,7 +415,7 @@ namespace Gunbond
             byte[] bIP = IP.GetAddressBytes();
             Buffer.BlockCopy(bIP, 0, data, 24, 4);
 
-            byte[] bListeningPort = IP.GetAddressBytes();
+            byte[] bListeningPort = ConvertIntToBytes(listeningPort);
             Buffer.BlockCopy(bListeningPort, 0, data, 28, 4);
 
             return new Message(data);
@@ -430,6 +427,8 @@ namespace Gunbond
             if (len > 1024) throw new Exception("Panjang data > 1024");
 
             byte[] data = new byte[len];
+            FillHeader(data);
+            data[19] = 31;
 
             byte[] bMembersCount = ConvertIntToBytes(room.Members.Count);
             byte[] bMaxPlayer = ConvertIntToBytes(room.MaxPlayer);
@@ -465,10 +464,6 @@ namespace Gunbond
 
         public void GetHandshakePeerCreator(out int peerId, out int listeningPort)
         {
-            byte[] data = new byte[24];
-            FillHeader(data);
-            data[19] = 137;
-
             byte[] bPeerId = new byte[4];
             Buffer.BlockCopy(data, 20, bPeerId, 0, 4);
             peerId = ConvertBytesToInt(bPeerId);
@@ -553,7 +548,7 @@ namespace Gunbond
             port = ConvertBytesToInt(bPort);
         }
 
-        public void GetJoin(out int peerId, out String roomId, out int listeningPort)
+        public void GetJoin(out int peerId, out String roomId)
         {
             byte[] bPeerId = new byte[4];
             Buffer.BlockCopy(data, 20, bPeerId, 0, 4);
@@ -562,10 +557,6 @@ namespace Gunbond
             byte[] bRoomId = new byte[50];
             Buffer.BlockCopy(data, 24, bRoomId, 0, 50);
             roomId = ConvertBytesToString(bRoomId);
-
-            byte[] bListeningPort = new byte[4];
-            Buffer.BlockCopy(data, 78, bListeningPort, 0, 4);
-            listeningPort = ConvertBytesToInt(bListeningPort);
         }
 
         public void GetStart(out int peerID, out String roomID)
@@ -616,7 +607,7 @@ namespace Gunbond
         {
             byte[] bMembersCount = new byte[4];
             byte[] bMaxPlayer = new byte[4];
-            byte[] bRoomId = new byte[4];
+            byte[] bRoomId = new byte[50];
 
             Buffer.BlockCopy(data, 20, bMembersCount, 0, 4);
             Buffer.BlockCopy(data, 24, bMaxPlayer, 0, 4);
@@ -685,7 +676,6 @@ namespace Gunbond
         }
         #endregion
 
-       
         public MessageType GetMessageType()
         {
             if (data.Length >= 20)
@@ -694,6 +684,7 @@ namespace Gunbond
                 {
                     case 135: return MessageType.HandshakePeer;
                     case 136: return MessageType.HandshakeTracker;
+                    case 137: return MessageType.HandshakePeerCreator;
                     case 182: return MessageType.KeepAlive;
                     case 255: return MessageType.CreateRoom;
                     case 254: return MessageType.ListRoom;

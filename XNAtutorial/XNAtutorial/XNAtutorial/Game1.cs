@@ -375,7 +375,7 @@ namespace GunbondTheGame
             
             //// TODO: Add your update logic here
             ProcessKeyboard();
-            //SendMsgDummy();
+            SendMsgDummy();
             if (rocketFlying)
             {
                 UpdateRocket();
@@ -392,15 +392,17 @@ namespace GunbondTheGame
             float yPos; // y position
             float power; // power
             float angle; // angle
-            int damage; // damage
-            msg.GetMessageGame(out xPos, out yPos, out angle, out power, out damage);
-            players[currentPlayer].Position.X += xPos;
-            players[currentPlayer].Position.Y += yPos;
+            float damage; // damage
+            bool isRocketFlying;
+            int PeerID;
+            msg.GetMessageGame(out xPos, out yPos, out angle, out power, out damage, out isRocketFlying, out PeerID);
+            players[currentPlayer].Position.X = xPos;
+            players[currentPlayer].Position.Y = yPos;
             players[currentPlayer].Power = power;
             players[currentPlayer].Angle = angle;
             rocketDamage = damage;
             System.Diagnostics.Debug.WriteLine("-----------------");
-            System.Diagnostics.Debug.WriteLine("players" + currentPlayer);
+            System.Diagnostics.Debug.WriteLine("players" + currentPlayer + PeerID);
             System.Diagnostics.Debug.WriteLine(players[currentPlayer].Position.X);
             System.Diagnostics.Debug.WriteLine(players[currentPlayer].Position.Y);
             System.Diagnostics.Debug.WriteLine(players[currentPlayer].Power);
@@ -411,7 +413,14 @@ namespace GunbondTheGame
         private void SendMsgDummy()
         {   
             int i=0;
-            Message msg = Message.CreateMessageGame(1, 0, 10.0f, 100.0f, 10);
+            Message msg = Message.CreateMessageGame(
+                players[currentPlayer].Position.X,
+                players[currentPlayer].Position.Y,
+                players[currentPlayer].Angle,
+                players[currentPlayer].Power,
+                rocketDamage+1f,
+                false,
+                1);
                 ProcessMessages(msg);
             ////Message msg = Message.CreateMessageGame(1, 1, 10);
             //KeyboardState keybState = Keyboard.GetState();
@@ -540,13 +549,20 @@ namespace GunbondTheGame
         private void ProcessKeyboard()
         {
             KeyboardState keybState = Keyboard.GetState();
-     
+            //float tempPosX = players[currentPlayer].Position.X;
+            //float tempPosY = players[currentPlayer].Position.Y;
+            //float tempAngle = players[currentPlayer].Angle;
+            //float tempPower = players[currentPlayer].Power;
             // menaikkan power dengan huruf W
             // menurunkan power dengan huruf Q
             if (keybState.IsKeyDown(Keys.Q))
-                players[currentPlayer].Power -= 1;
+            {
+                players[currentPlayer].Power += 1f;
+            }
+                
+            
             if (keybState.IsKeyDown(Keys.W))
-                players[currentPlayer].Power += 1;
+                players[currentPlayer].Power -= 1f; 
             // menaikkan angle dengan up arrow
             // mennurunkan angle dengan down arrow
             if (keybState.IsKeyDown(Keys.Down))

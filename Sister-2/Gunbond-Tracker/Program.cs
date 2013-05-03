@@ -12,7 +12,8 @@ namespace Gunbond_Tracker
         public static void Main(string[] args)
         {
             Console.Title = "Gunbond Tracker";
-            Console.SetWindowSize(150, 58);
+            Console.SetWindowSize(120, 40);
+            Console.ForegroundColor = ConsoleColor.Green;
             Console.Clear();
 
             Tracker tracker = new Tracker("config.xml");

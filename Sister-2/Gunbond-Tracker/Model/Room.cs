@@ -14,6 +14,12 @@ namespace Gunbond_Tracker.Model
             set;
         }
 
+        public int ListenPort
+        {
+            get;
+            set;
+        }
+
         public string Id
         {
             get;
@@ -33,12 +39,13 @@ namespace Gunbond_Tracker.Model
         }
         #endregion
 
-        public Room(string Id, Peer Creator, int MaxPlayers)
+        public Room(string Id, Peer Creator, int MaxPlayers, int ListenPort)
         {
             this.Members = new Dictionary<int, Peer>();
             this.Id = Id;
             this.Creator = Creator;
             this.MaxPlayers = MaxPlayers;
+            this.ListenPort = ListenPort;
 
             this.Members.Add(Creator.Id, Creator);
         }

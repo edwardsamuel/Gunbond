@@ -135,8 +135,6 @@ namespace Gunbond_Client
         private Thread waitPeer;
         private Thread keepAliveRoom;
 
-        private Dictionary<IPEndPoint, int> nextReceiveStatus;
-
         private ClientConfig _config;
         public ClientConfig Configuration
         {
@@ -193,9 +191,7 @@ namespace Gunbond_Client
             keepAliveRoom = null;
 
             Room = null;
-
-            nextReceiveStatus = new Dictionary<IPEndPoint, int>();
-
+            
             IsConnected = false;
             IsInRoom = false;
             IsCreator = false;
@@ -443,7 +439,7 @@ namespace Gunbond_Client
                             nextPeerSocket.Send(messageConnectToCreator.data, 0, messageConnectToCreator.data.Length, SocketFlags.None);
                             nextPeerSocket.Receive(bufferFromCreator, bufferFromCreator.Length, SocketFlags.None);
                         }
-                        
+
                         keepAliveRoom = new Thread(new ThreadStart(SendAliveNextPeer));
                         keepAliveRoom.Start();
 
@@ -637,19 +633,12 @@ namespace Gunbond_Client
                 AsyncCallback aCallback = new AsyncCallback(AcceptCallback);
                 slistener.BeginAccept(aCallback, slistener);
 
-                nextReceiveStatus.Add((handler.RemoteEndPoint as IPEndPoint), 1);
-
                 if (!nextAsyncResult.AsyncWaitHandle.WaitOne(Configuration.MaxTimeout))
                 {
                     Logger.WriteLine("Connection timeout for peer with IP Address " + (handler.LocalEndPoint as IPEndPoint).Address + ":" + (handler.LocalEndPoint as IPEndPoint).Port + " -> " + (handler.RemoteEndPoint as IPEndPoint).Address + ":" + (handler.RemoteEndPoint as IPEndPoint).Port);
                     handler.EndReceive(target);
                     Logger.WriteLine("Closing connection " + (handler.RemoteEndPoint as IPEndPoint).Address + ":" + (handler.RemoteEndPoint as IPEndPoint).Port);
                     handler.Close();
-
-                    lock (statusPaddle)
-                    {
-                        nextReceiveStatus.Remove((handler.RemoteEndPoint as IPEndPoint));
-                    }
                 }
             }
             catch (Exception exc)
@@ -672,7 +661,6 @@ namespace Gunbond_Client
                 Socket handler = (Socket)obj[1];
 
                 Logger.WriteLine("ReceiveCallback from " + (handler.RemoteEndPoint as IPEndPoint).Address + ":" + (handler.RemoteEndPoint as IPEndPoint).Port);
-                nextReceiveStatus[(handler.RemoteEndPoint as IPEndPoint)]--;
 
                 bool quit = false;
 
@@ -735,6 +723,8 @@ namespace Gunbond_Client
                             // Send FAILED message akibat ruang penuh
                             response = Message.CreateMessageFailed();
                             handler.Send(response.data, 0, response.data.Length, SocketFlags.None);
+                            handler.Close();
+                            quit = true;
                         }
                         #endregion
                     }
@@ -847,43 +837,20 @@ namespace Gunbond_Client
 
                 if (!quit)
                 {
-                    int nextStatus;
-                    lock (statusPaddle)
+                    IAsyncResult nextAsyncResult = handler.BeginReceive(
+                        buffer,
+                        0,
+                        buffer.Length,
+                        SocketFlags.None,
+                        new AsyncCallback(ReceiveCallback),
+                        obj
+                    );
+
+                    if (!nextAsyncResult.AsyncWaitHandle.WaitOne(Configuration.MaxTimeout))
                     {
-                        nextReceiveStatus.TryGetValue((handler.RemoteEndPoint as IPEndPoint), out nextStatus);
-                    }
-
-                    lock (statusPaddle)
-                    {
-                        nextReceiveStatus[(handler.RemoteEndPoint as IPEndPoint)]++;
-                    }
-
-                    Logger.WriteLine("---***--- " + requestType.ToString() + " nextStatus = " + nextStatus);
-
-                    if (nextStatus == 0)
-                    {
-                        IAsyncResult nextAsyncResult = handler.BeginReceive(
-                            buffer,
-                            0,
-                            buffer.Length,
-                            SocketFlags.None,
-                            new AsyncCallback(ReceiveCallback),
-                            obj
-                        );
-
-                        Logger.WriteLine("---***--- nextAsyncResult activated");
-                        
-                        if (!nextAsyncResult.AsyncWaitHandle.WaitOne(Configuration.MaxTimeout))
-                        {
-                            Logger.WriteLine("- R Connection timeout for peer with IP Address " + (handler.LocalEndPoint as IPEndPoint).Address + ":" + (handler.LocalEndPoint as IPEndPoint).Port + " -> " + (handler.RemoteEndPoint as IPEndPoint).Address + ":" + (handler.RemoteEndPoint as IPEndPoint).Port);
-                            Logger.WriteLine("- R Closing connection " + (handler.RemoteEndPoint as IPEndPoint).Address + ":" + (handler.RemoteEndPoint as IPEndPoint).Port);
-                            handler.Close();
-
-                            lock (statusPaddle)
-                            {
-                                nextReceiveStatus.Remove((handler.RemoteEndPoint as IPEndPoint));
-                            }
-                        }
+                        Logger.WriteLine("Connection timeout for peer with IP Address " + (handler.LocalEndPoint as IPEndPoint).Address + ":" + (handler.LocalEndPoint as IPEndPoint).Port + " -> " + (handler.RemoteEndPoint as IPEndPoint).Address + ":" + (handler.RemoteEndPoint as IPEndPoint).Port);
+                        Logger.WriteLine("Closing connection " + (handler.RemoteEndPoint as IPEndPoint).Address + ":" + (handler.RemoteEndPoint as IPEndPoint).Port);
+                        handler.Close();
                     }
                 }
             }

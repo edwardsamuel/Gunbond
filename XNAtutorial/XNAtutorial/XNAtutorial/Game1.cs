@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Xna.Framework;
@@ -8,7 +8,6 @@ using Microsoft.Xna.Framework.GamerServices;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Media;
-
 namespace GunbondTheGame
 {
     public struct PlayerData
@@ -18,8 +17,10 @@ namespace GunbondTheGame
         public Color Color;
         public float Angle;
         public float Power;
+        public float Health;
+        public Texture2D carriageTexture;
     }
-
+    
     /// <summary>
     /// This is the main type for your game
     /// </summary>
@@ -30,7 +31,6 @@ namespace GunbondTheGame
         GraphicsDevice device;
         Texture2D backgroundTexture;
         Texture2D foregroundTexture;
-        Texture2D carriageTexture;
         Texture2D cannonTexture;
         Texture2D rocketTexture;
         Texture2D smokeTexture;
@@ -39,10 +39,12 @@ namespace GunbondTheGame
         int screenHeight;
         float playerScaling;
         int currentPlayer = 0;
-        SpriteFont font;
+        SpriteFont font;     
 
         PlayerData[] players;
         int numberOfPlayers = 4;
+        // array of carriageTexture
+        Texture2D[] carriageTexture = new Texture2D[8];
 
         // rocket:
         bool rocketFlying = false;
@@ -50,7 +52,7 @@ namespace GunbondTheGame
         Vector2 rocketDirection;
         float rocketAngle;
         float rocketScaling = 0.1f;
-
+        float rocketDamage;
         // smoke:
         List<Vector2> smokeList = new List<Vector2>();
         Random randomizer = new Random();
@@ -68,6 +70,7 @@ namespace GunbondTheGame
         {
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
+            IsMouseVisible = true;
         }
 
         /// <summary>
@@ -80,8 +83,8 @@ namespace GunbondTheGame
         {
             // TODO: Add your initialization logic here
             // set size of backbuffer, which contain what will be drawn to the screen
-            graphics.PreferredBackBufferWidth = 500; 
-            graphics.PreferredBackBufferHeight = 500;
+            graphics.PreferredBackBufferWidth = 680; 
+            graphics.PreferredBackBufferHeight = 680;
 
             graphics.IsFullScreen = false;
             graphics.ApplyChanges();
@@ -91,26 +94,16 @@ namespace GunbondTheGame
 
         private void SetUpPlayers()
             // initializes array of PlayerData objects
-        {
-            Color[] playerColors = new Color[10];
-            playerColors[0] = Color.Red;
-            playerColors[1] = Color.Green;
-            playerColors[2] = Color.Blue;
-            playerColors[3] = Color.Purple;
-            playerColors[4] = Color.Orange;
-            playerColors[5] = Color.Indigo;
-            playerColors[6] = Color.Yellow;
-            playerColors[7] = Color.SaddleBrown;
-            playerColors[8] = Color.Tomato;
-            playerColors[9] = Color.Turquoise;
-
+        {            
             players = new PlayerData[numberOfPlayers];
             for (int i = 0; i < numberOfPlayers; i++)
             {
                 players[i].IsAlive = true;
-                players[i].Color = playerColors[i];
+                //players[i].Color = playerColors[i];
+                players[i].carriageTexture = carriageTexture[i];
                 players[i].Angle = MathHelper.ToRadians(90);
                 players[i].Power = 100;
+                players[i].Health = 500;
                 players[i].Position = new Vector2();
                 players[i].Position.X = screenWidth / (numberOfPlayers + 1) * (i + 1);
                 players[i].Position.Y = terrainContour[(int)players[i].Position.X];
@@ -128,7 +121,7 @@ namespace GunbondTheGame
             device = graphics.GraphicsDevice;
 
             // linking variable backgroundTexture to an img named "background"
-            backgroundTexture = Content.Load<Texture2D>("background");
+            backgroundTexture = Content.Load<Texture2D>("bg_blue");
 
             // linking variable foregroundTexture to an img named "foreground"
             // foregroundTexture = Content.Load<Texture2D>("foreground");
@@ -136,10 +129,18 @@ namespace GunbondTheGame
             screenHeight = device.PresentationParameters.BackBufferHeight;
             screenWidth = device.PresentationParameters.BackBufferWidth;
 
-            carriageTexture = Content.Load<Texture2D>("carriage");
+            // array of CariageTexture
+            carriageTexture[0] = Content.Load<Texture2D>("P1");
+            carriageTexture[1] = Content.Load<Texture2D>("P2");
+            carriageTexture[2] = Content.Load<Texture2D>("P3");
+            carriageTexture[3] = Content.Load<Texture2D>("P4");
+            carriageTexture[4] = Content.Load<Texture2D>("P5");
+            carriageTexture[5] = Content.Load<Texture2D>("P6");
+            carriageTexture[6] = Content.Load<Texture2D>("P7");
+            carriageTexture[7] = Content.Load<Texture2D>("P8");
             cannonTexture = Content.Load<Texture2D>("cannon");
 
-            playerScaling = 40.0f / (float)carriageTexture.Width;
+            playerScaling = 50.0f / (float)carriageTexture[0].Width;
 
             font = Content.Load<SpriteFont>("myFont");
 
@@ -153,7 +154,7 @@ namespace GunbondTheGame
             CreateForeground();
 
             rocketColorArray = TextureTo2DArray(rocketTexture);
-            carriageColorArray = TextureTo2DArray(carriageTexture);
+            carriageColorArray = TextureTo2DArray(players[0].carriageTexture);
             cannonColorArray = TextureTo2DArray(cannonTexture);
             // TODO: use this.Content to load your game content here
         }
@@ -173,10 +174,10 @@ namespace GunbondTheGame
 
             double rand1 = randomizer.NextDouble() + 1;
             double rand2 = randomizer.NextDouble() + 2;
-            double rand3 = randomizer.NextDouble() + 3;
+            double rand3 = randomizer.NextDouble() + 5;
 
-            float offset = screenHeight / 2;
-            float peakheight = 100;
+            float offset = screenHeight*(float)(0.6);
+            float peakheight = 80;
             float flatness = 70;
 
             for (int x = 0; x < screenWidth; x++)
@@ -281,11 +282,16 @@ namespace GunbondTheGame
                         int xPos = (int)player.Position.X;
                         int yPos = (int)player.Position.Y;
 
-                        Matrix carriageMat = Matrix.CreateTranslation(0, -carriageTexture.Height, 0) * Matrix.CreateScale(playerScaling) * Matrix.CreateTranslation(xPos, yPos, 0);
+                        
+                        Matrix carriageMat = Matrix.CreateTranslation(0, -player.carriageTexture.Height, 0) * Matrix.CreateScale(playerScaling) * Matrix.CreateTranslation(xPos, yPos, 0);
                         Vector2 carriageCollisionPoint = TexturesCollide(carriageColorArray, carriageMat, rocketColorArray, rocketMat);                        
                         if (carriageCollisionPoint.X > -1)
                         {
-                            players[i].IsAlive = false;
+                            players[i].Health -= players[currentPlayer].Power / 3;
+                            if (players[i].Health == 0)
+                            {
+                                players[i].IsAlive = false;
+                            }                            
                             return carriageCollisionPoint;
                         }
 
@@ -293,7 +299,11 @@ namespace GunbondTheGame
                         Vector2 cannonCollisionPoint = TexturesCollide(cannonColorArray, cannonMat, rocketColorArray, rocketMat);
                         if (cannonCollisionPoint.X > -1)
                         {
-                            players[i].IsAlive = false;
+                            players[i].Health -= players[currentPlayer].Power;
+                            if (players[i].Health == 0)
+                            {
+                                players[i].IsAlive = false;
+                            } 
                             return cannonCollisionPoint;
                         }
                     }
@@ -362,16 +372,53 @@ namespace GunbondTheGame
             // Allows the game to exit
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
                 this.Exit();
-
-            // TODO: Add your update logic here
+            
+            //// TODO: Add your update logic here
             ProcessKeyboard();
+            //SendMsgDummy();
             if (rocketFlying)
             {
                 UpdateRocket();
                 CheckCollisions(gameTime);
             }
-            base.Update(gameTime);
+            base.Update(gameTime);        
         }
+
+      
+
+		private void ProcessMessages(Message msg)
+        {
+            float xPos; // x position
+            float yPos; // y position
+            float power; // power
+            float angle; // angle
+            int damage; // damage
+            msg.GetMessageGame(out xPos, out yPos, out angle, out power, out damage);
+            players[currentPlayer].Position.X += xPos;
+            players[currentPlayer].Position.Y += yPos;
+            players[currentPlayer].Power = power;
+            players[currentPlayer].Angle = angle;
+            rocketDamage = damage;
+            System.Diagnostics.Debug.WriteLine("-----------------");
+            System.Diagnostics.Debug.WriteLine("players" + currentPlayer);
+            System.Diagnostics.Debug.WriteLine(players[currentPlayer].Position.X);
+            System.Diagnostics.Debug.WriteLine(players[currentPlayer].Position.Y);
+            System.Diagnostics.Debug.WriteLine(players[currentPlayer].Power);
+            System.Diagnostics.Debug.WriteLine(players[currentPlayer].Angle);
+            System.Diagnostics.Debug.WriteLine(rocketDamage);
+            System.Diagnostics.Debug.WriteLine("-----------------");
+        }
+        private void SendMsgDummy()
+        {   
+            int i=0;
+            Message msg = Message.CreateMessageGame(1, 0, 10.0f, 100.0f, 10);
+                ProcessMessages(msg);
+            ////Message msg = Message.CreateMessageGame(1, 1, 10);
+            //KeyboardState keybState = Keyboard.GetState();
+            //if (keybState.IsKeyDown(Keys.Space))
+            //ProcessMessages(msg);
+        }
+
 
         private void UpdateRocket()
         {
@@ -416,7 +463,8 @@ namespace GunbondTheGame
             // starting the spriteBatch first before drawing images
             spriteBatch.Begin();
             DrawScenery();
-            DrawPlayers();
+            DrawCannon();
+            DrawPlayers();            
             DrawText();
             DrawRocket();
             DrawSmoke();
@@ -439,36 +487,47 @@ namespace GunbondTheGame
 
         private void DrawPlayers()
         {
-            // for each of our players, check if it’s still alive. If it is,
-            // draw the carriage texture at the player’s position
+            // for each of our players, check if itÂ’s still alive. If it is,
+            // draw the carriage texture at the playerÂ’s position
             foreach (PlayerData player in players)
             {
                 if (player.IsAlive)
                 {
                     int xPos = (int)player.Position.X;
                     int yPos = (int)player.Position.Y;
-                    Vector2 cannonOrigin = new Vector2(11, 50);
+                    Vector2 cannonOrigin = new Vector2(11, 60);
 
-                    spriteBatch.Draw(cannonTexture, new Vector2(xPos+20, yPos-10), null, player.Color, player.Angle, cannonOrigin, playerScaling, SpriteEffects.None, 1);
-
-                    spriteBatch.Draw(carriageTexture, player.Position, null, player.Color, 0, new Vector2(0, carriageTexture.Height), playerScaling, SpriteEffects.None, 0); 
+                    spriteBatch.Draw(player.carriageTexture, player.Position, null, Color.White, 0, new Vector2(0, player.carriageTexture.Height), playerScaling, SpriteEffects.None, 0);
+                    //spriteBatch.Draw(cannonTexture, new Vector2(xPos + 25, yPos - 20), null, Color.Red, player.Angle, cannonOrigin, 0.7f, SpriteEffects.None, 1);
                 }
             }
+        }
+
+        private void DrawCannon()
+        {
+            PlayerData player = players[currentPlayer];
+            int xPos = (int)player.Position.X;
+            int yPos = (int)player.Position.Y;
+            Vector2 cannonOrigin = new Vector2(11, 60);
+            spriteBatch.Draw(cannonTexture, new Vector2(xPos + 25, yPos - 20), null, Color.Red, player.Angle, cannonOrigin, 0.7f, SpriteEffects.None, 1);
         }
 
         private void DrawText()
         {
             PlayerData player = players[currentPlayer];
             int currentAngle = (int)MathHelper.ToDegrees(player.Angle);
-            spriteBatch.DrawString(font, "Cannon angle: " + currentAngle.ToString(), new Vector2(20,20), player.Color);
+     
+            spriteBatch.DrawString(font, "Cannon angle: " + currentAngle.ToString(), new Vector2(20,20), Color.Black);
             spriteBatch.DrawString(font, "Cannon power: " + player.Power.ToString(), new Vector2(20, 45), Color.White);
+            spriteBatch.DrawString(font, "Life: " + player.Health.ToString(), new Vector2(20, 65), Color.Black);
         }
 
         private void DrawRocket()
         {
             if (rocketFlying)
             {
-                spriteBatch.Draw(rocketTexture, rocketPosition, null, players[currentPlayer].Color, rocketAngle, new Vector2(42,240), 0.1f, SpriteEffects.None, 1);
+           
+                spriteBatch.Draw(rocketTexture, rocketPosition, null, Color.White, rocketAngle, new Vector2(42,240), 0.1f, SpriteEffects.None, 1);
             }
         }
 
@@ -481,27 +540,38 @@ namespace GunbondTheGame
         private void ProcessKeyboard()
         {
             KeyboardState keybState = Keyboard.GetState();
-            if (keybState.IsKeyDown(Keys.Left))
+     
+            // menaikkan power dengan huruf W
+            // menurunkan power dengan huruf Q
+            if (keybState.IsKeyDown(Keys.Q))
+                players[currentPlayer].Power -= 1;
+            if (keybState.IsKeyDown(Keys.W))
+                players[currentPlayer].Power += 1;
+            // menaikkan angle dengan up arrow
+            // mennurunkan angle dengan down arrow
+            if (keybState.IsKeyDown(Keys.Down))
                 players[currentPlayer].Angle -= 0.01f;
-            if (keybState.IsKeyDown(Keys.Right))
+      
+            if (keybState.IsKeyDown(Keys.Up))
                 players[currentPlayer].Angle += 0.01f;
 
+            // menggerakkan karakter ke kiri dan kanan dengan left-right arrow
+            if (keybState.IsKeyDown(Keys.Left))
+                players[currentPlayer].Position.X -= 1f;
+
+            if (keybState.IsKeyDown(Keys.Right))
+                players[currentPlayer].Position.X += 1f;
             if (players[currentPlayer].Angle > MathHelper.PiOver2)
                 players[currentPlayer].Angle = -MathHelper.PiOver2;
             if (players[currentPlayer].Angle < -MathHelper.PiOver2)
                 players[currentPlayer].Angle = MathHelper.PiOver2;
 
-            if (keybState.IsKeyDown(Keys.Down))
-                players[currentPlayer].Power -= 1;
-            if (keybState.IsKeyDown(Keys.Up))
-                players[currentPlayer].Power += 1;
             if (keybState.IsKeyDown(Keys.PageDown))
                 players[currentPlayer].Power -= 20;
             if (keybState.IsKeyDown(Keys.PageUp))
                 players[currentPlayer].Power += 20;
-
-            if (players[currentPlayer].Power > 1000)
-                players[currentPlayer].Power = 1000;
+            if (players[currentPlayer].Power > 500)
+                players[currentPlayer].Power = 500;
             if (players[currentPlayer].Power < 0)
                 players[currentPlayer].Power = 0;
 

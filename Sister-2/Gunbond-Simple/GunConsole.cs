@@ -546,9 +546,9 @@ namespace Gunbond_Client
                     Logger.WriteLine("SendAliveNextPeer");
                     byte[] buffer = new byte[1024];
 
-                    lock (nextPeerSocket)
+                    lock (nextPeerPaddle)
                     {
-                        if (nextPeerSocket == null || !nextPeerSocket.Connected)
+                        if (nextPeerSocket == null)
                         {
                             Thread.Sleep(Configuration.MaxTimeout / 2);
                             continue;
@@ -652,13 +652,14 @@ namespace Gunbond_Client
         {
             Logger.WriteLine("--- ReceiveCallback");
             Message.MessageType requestType = Message.MessageType.Unknown;
+            Socket handler = null;
             try
             {
                 object[] obj = new object[2];
                 obj = (object[])target.AsyncState;
 
-                byte[] buffer = (byte[])obj[0];
-                Socket handler = (Socket)obj[1];
+                byte[] buffer = (byte[]) obj[0];
+                handler = (Socket) obj[1];
 
                 Logger.WriteLine("ReceiveCallback from " + (handler.RemoteEndPoint as IPEndPoint).Address + ":" + (handler.RemoteEndPoint as IPEndPoint).Port);
 
@@ -854,9 +855,51 @@ namespace Gunbond_Client
                     }
                 }
             }
-            catch (Exception exc)
+            catch (SocketException exc)
             {
                 Logger.WriteLine(exc);
+                if (exc.SocketErrorCode == SocketError.HostDown || exc.SocketErrorCode == SocketError.ConnectionReset)
+                {
+                    if (Room.Members.Count > 2)
+                    {
+                        int index = -1;
+                        for (int i = 0; i < Room.Members.Count; i++)
+                        {
+                            Peer p = Room.Members[i];
+                            if (p.IPAddress.Equals((handler.LocalEndPoint as IPEndPoint).Address))
+                            {
+                                index = i;
+                            }
+                        }
+
+                        if (index == 0)
+                        {
+                            index = Room.Members.Count - 2;
+                        }
+                        else
+                        {
+                            index--;
+                        }
+
+                        Peer backPeer = Room.Members[index];
+                        byte[] buffer = new byte[1024];
+                        Message request = Message.CreateMessageQuit(backPeer.PeerId);
+                        lock (nextPeerPaddle)
+                        {
+                            nextPeerSocket.Send(request.data, 0, request.data.Length, SocketFlags.None);
+                            nextPeerSocket.Receive(buffer, 0, buffer.Length, SocketFlags.None);
+                        }
+                    }
+                    else
+                    {
+                        // Remove last element
+                        Room.Members.RemoveAt(1);
+                        lock (nextPeerPaddle)
+                        {
+                            nextPeerSocket = null;
+                        }
+                    }
+                }
             }
 
             Logger.WriteLine();

@@ -34,13 +34,18 @@ namespace GunBond_Client.GameStates
     }
 
     class GameStart : DrawableGameState
-    {
+    {        
         private IGameStateService gameStateService;
         private IGuiService guiService;
         private IInputService inputService;
         private ContentManager Content;
+        private IGameState previousState;
 
         private Screen gameStartScreen;
+
+        enum GameState { Play, GameOver, BackToRoom };
+        GameState gamestate = GameState.Play;
+        MouseState prev;
 
         GraphicsDeviceManager graphics;
         SpriteBatch spriteBatch;
@@ -51,14 +56,16 @@ namespace GunBond_Client.GameStates
         Texture2D rocketTexture;
         Texture2D smokeTexture;
         Texture2D groundTexture;
+        Texture2D exitTexture;
         int screenWidth = 680;
         int screenHeight = 680;
         float playerScaling;
-        int currentPlayer = 0;
+        int currentPlayer; 
         SpriteFont font;
 
-        PlayerData[] players;
-        int numberOfPlayers = 4;
+        PlayerData[] players;   
+        int numberOfPlayers = 6;
+        int numberOfPlayerAlive;
         // array of carriageTexture
         Texture2D[] carriageTexture = new Texture2D[8];
 
@@ -82,6 +89,9 @@ namespace GunBond_Client.GameStates
         Color[,] carriageColorArray;
         Color[,] cannonColorArray;
 
+        int[] turnA;
+        int[] turnB;
+
         public GameStart(IGameStateService gameStateService, IGuiService guiService,
                         IInputService inputService, GraphicsDeviceManager graphics, 
                         ContentManager content)
@@ -91,10 +101,11 @@ namespace GunBond_Client.GameStates
             this.inputService = inputService;
             this.graphics = graphics;
             this.Content = content;
+            this.previousState = gameStateService.ActiveState;
 
             gameStartScreen = new Screen(680, 680);
 
-            spriteBatch = new SpriteBatch(graphics.GraphicsDevice);
+            spriteBatch = new SpriteBatch(graphics.GraphicsDevice);            
 
             LoadContent();
         }
@@ -107,7 +118,6 @@ namespace GunBond_Client.GameStates
         /// </summary>
         protected override void OnEntered()
         {
-
             guiService.Screen = gameStartScreen;
             // TODO: Add your initialization logic here
             // set size of backbuffer, which contain what will be drawn to the screen
@@ -124,7 +134,6 @@ namespace GunBond_Client.GameStates
             for (int i = 0; i < numberOfPlayers; i++)
             {
                 players[i].IsAlive = true;
-                //players[i].Color = playerColors[i];
                 players[i].carriageTexture = carriageTexture[i];
                 players[i].Angle = MathHelper.ToRadians(90);
                 players[i].Power = 100;
@@ -133,6 +142,7 @@ namespace GunBond_Client.GameStates
                 players[i].Position.X = screenWidth / (numberOfPlayers + 1) * (i + 1);
                 players[i].Position.Y = terrainContour[(int)players[i].Position.X];
             }
+            numberOfPlayerAlive = numberOfPlayers;
         }
 
         /// <summary>
@@ -142,15 +152,10 @@ namespace GunBond_Client.GameStates
         public void LoadContent()
         {
             // Create a new SpriteBatch, which can be used to draw textures.
-        
             device = graphics.GraphicsDevice;
 
             // linking variable backgroundTexture to an img named "background"
             backgroundTexture = Content.Load<Texture2D>("bg_blue");
-
-            // linking variable foregroundTexture to an img named "foreground"
-            // foregroundTexture = Content.Load<Texture2D>("foreground");
-
 
             // array of CariageTexture
             carriageTexture[0] = Content.Load<Texture2D>("P1");
@@ -161,6 +166,7 @@ namespace GunBond_Client.GameStates
             carriageTexture[5] = Content.Load<Texture2D>("P6");
             carriageTexture[6] = Content.Load<Texture2D>("P7");
             carriageTexture[7] = Content.Load<Texture2D>("P8");
+
             cannonTexture = Content.Load<Texture2D>("cannon");
 
             playerScaling = 50.0f / (float)carriageTexture[0].Width;
@@ -170,6 +176,7 @@ namespace GunBond_Client.GameStates
             rocketTexture = Content.Load<Texture2D>("rocket");
             smokeTexture = Content.Load<Texture2D>("smoke");
             groundTexture = Content.Load<Texture2D>("ground");
+            exitTexture = Content.Load<Texture2D>("Images\\Lobby\\Exit");
 
             GenerateTerrainContour();
             SetUpPlayers();
@@ -212,7 +219,6 @@ namespace GunBond_Client.GameStates
                 terrainContour[x] = (int)height;
             }
         }
-
 
         private void CreateForeground()
         {
@@ -311,9 +317,10 @@ namespace GunBond_Client.GameStates
                         if (carriageCollisionPoint.X > -1)
                         {
                             players[i].Health -= players[currentPlayer].Power / 3;
-                            if (players[i].Health == 0)
+                            if (players[i].Health <= 0)
                             {
                                 players[i].IsAlive = false;
+                                numberOfPlayerAlive -= 1;
                             }
                             return carriageCollisionPoint;
                         }
@@ -376,7 +383,6 @@ namespace GunBond_Client.GameStates
             }
         }
 
-
         /// <summary>
         /// Allows the game to run logic such as updating the world,
         /// checking for collisions, gathering input, and playing audio.
@@ -396,9 +402,35 @@ namespace GunBond_Client.GameStates
                 UpdateRocket();
                 CheckCollisions(gameTime);
             }
+
+            MouseState mouseState;
+
+            switch (gamestate)
+            {
+                case GameState.Play:
+                    if (numberOfPlayerAlive == 1)
+                    {
+                        gamestate = GameState.GameOver;
+                    }
+                    break;
+                case GameState.GameOver:
+                    mouseState = Mouse.GetState();
+                    System.Console.WriteLine("pencet" + mouseState.X + ", " + mouseState.Y);
+                    if (mouseState.X > 300 && mouseState.X < 500 && mouseState.Y < 400 && mouseState.Y > 250 && mouseState.LeftButton == ButtonState.Pressed && prev.LeftButton == ButtonState.Released)
+                    {
+                        //gamestate = GameState.BackToRoom;                        
+                        DrawableGameState state = new RoomState(previousState, gameStateService, guiService, inputService, graphics, Content);
+                        gameStateService.Switch(state);
+                    }
+                    break;
+                case GameState.BackToRoom:
+
+                    break;
+            }
+
+            prev = Mouse.GetState();
+
         }
-
-
 
         private void ProcessMessages(Message msg)
         {
@@ -473,14 +505,25 @@ namespace GunBond_Client.GameStates
             // TODO: Add your drawing code here
 
             // starting the spriteBatch first before drawing images
-            spriteBatch.Begin();
-            DrawScenery();
-            DrawCannon();
-            DrawPlayers();
-            DrawText();
-            DrawRocket();
-            DrawSmoke();
-            spriteBatch.End();
+            if (gamestate == GameState.Play)
+            {
+                spriteBatch.Begin();
+                DrawScenery();
+                DrawCannon();
+                DrawPlayers();
+                DrawText();
+                DrawRocket();
+                DrawSmoke();
+                spriteBatch.End();
+            }
+            
+            else if (gamestate == GameState.GameOver)
+            {
+                spriteBatch.Begin();
+                DrawScenery();
+                DrawExitGame();
+                spriteBatch.End();
+            }            
         }
 
         private void DrawScenery()
@@ -536,7 +579,6 @@ namespace GunBond_Client.GameStates
         {
             if (rocketFlying)
             {
-
                 spriteBatch.Draw(rocketTexture, rocketPosition, null, Color.White, rocketAngle, new Vector2(42, 240), 0.1f, SpriteEffects.None, 1);
             }
         }
@@ -545,6 +587,11 @@ namespace GunBond_Client.GameStates
         {
             foreach (Vector2 smokePos in smokeList)
                 spriteBatch.Draw(smokeTexture, smokePos, null, Color.White, 0, new Vector2(40, 35), 0.2f, SpriteEffects.None, 1);
+        }
+
+        private void DrawExitGame()
+        {
+            spriteBatch.Draw(exitTexture, new Vector2(300,300), Color.White);
         }
 
         private void ProcessKeyboard()

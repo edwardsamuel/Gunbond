@@ -26,7 +26,8 @@ namespace GunbondTheGame
             Join = 253,
             Start = 252,
             Quit = 235,
-            InGame = 123
+            InGame = 123,
+            Exit = 119
         };
 
         #region Message Room Body
@@ -399,6 +400,17 @@ namespace GunbondTheGame
             return m;
         }
 
+        public static Message CreateMessageExit()
+        {
+            byte[] data = new byte[20];
+            FillHeader(data);
+            data[19] = 119;
+
+            Message m = new Message();
+            m.data = data;
+            return m;
+        }
+
         #region MessageGame
         public static Message CreateMessageGame(float x, float y, float angle, float power, float damage, bool isRocketFlying, int peerId)
         {
@@ -614,6 +626,13 @@ namespace GunbondTheGame
             peerID = ConvertBytesToInt(d);
         }
 
+        public void GetExit(out int peerID)
+        {
+            byte[] d = new byte[4];
+            Buffer.BlockCopy(data, 20, d, 0, 4);
+            peerID = ConvertBytesToInt(d);
+        }
+
         #region GetMessageGame
         public void GetMessageGame(out float xPos, out float yPos, out float angle, out float power, out float damage, out bool isRocketFlying, out int PeerID)
         {
@@ -671,6 +690,7 @@ namespace GunbondTheGame
                     case 252: return MessageType.Start;
                     case 235: return MessageType.Quit;
                     case 123: return MessageType.InGame;
+                    case 119: return MessageType.Exit;
 
                     default: return MessageType.Unknown;
                 }

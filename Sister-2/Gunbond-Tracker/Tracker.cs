@@ -182,7 +182,7 @@ namespace Gunbond_Tracker
         #endregion
 
         private Random random = new Random();
-        
+
         public Socket listener;
         public Dictionary<int, Peer> peers;
         public Dictionary<String, Room> rooms;
@@ -229,7 +229,7 @@ namespace Gunbond_Tracker
                 Socket handler = null;
 
                 byte[] buffer = new byte[1024];
-                slistener = (Socket) result.AsyncState;
+                slistener = (Socket)result.AsyncState;
                 handler = slistener.EndAccept(result);
                 handler.NoDelay = false;
 
@@ -269,10 +269,10 @@ namespace Gunbond_Tracker
             try
             {
                 object[] obj = new object[2];
-                obj = (object[]) target.AsyncState;
+                obj = (object[])target.AsyncState;
 
-                byte[] data = (byte[]) obj[0];
-                Socket handler = (Socket) obj[1];
+                byte[] data = (byte[])obj[0];
+                Socket handler = (Socket)obj[1];
                 IPAddress tempIP = (handler.RemoteEndPoint as IPEndPoint).Address;
 
                 string content = string.Empty;
@@ -488,6 +488,57 @@ namespace Gunbond_Tracker
                         //        handler.Send(response.data, 0, response.data.Length, SocketFlags.None);
                         //    }
                         //    #endregion
+                    }
+                    else if (requestType == Message.MessageType.Add)
+                    {
+                        #region Add
+                        int peerId;
+                        string roomId;
+                        request.GetAdd(out peerId, out roomId);
+                        Peer peer;
+                        Room room;
+                        if (peers.TryGetValue(peerId, out peer) && (rooms.TryGetValue(roomId, out room)))
+                        {
+                            room.AddPeer(peer);
+                            response = Message.CreateMessageSuccess();
+                            handler.Send(response.data, 0, response.data.Length, SocketFlags.None);
+                        }
+                        else
+                        {
+                            // send message FAIL that peer is not registered
+                            response = Message.CreateMessageFailed();
+                            handler.Send(response.data, 0, response.data.Length, SocketFlags.None);
+                        }
+                        #endregion
+                    }
+                    else if (requestType == Message.MessageType.Remove)
+                    {
+                        #region Remove
+                        int peerId;
+                        int creatorId;
+                        int creatorPort;
+                        string roomId;
+
+                        request.GetRemove(out peerId, out creatorId, out creatorPort, out roomId);
+                        Room room;
+                        if (rooms.TryGetValue(roomId, out room))
+                        {
+                            room.RemovePeer(peerId);
+                            Peer creator;
+                            room.Members.TryGetValue(creatorId, out creator);
+                            room.Creator = creator;
+                            room.ListenPort = creatorPort;
+
+                            response = Message.CreateMessageSuccess();
+                            handler.Send(response.data, 0, response.data.Length, SocketFlags.None);
+                        }
+                        else
+                        {
+                            // send message FAIL that peer is not registered
+                            response = Message.CreateMessageFailed();
+                            handler.Send(response.data, 0, response.data.Length, SocketFlags.None);
+                        }
+                        #endregion
                     }
                     else
                     {

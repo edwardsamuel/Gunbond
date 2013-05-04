@@ -68,7 +68,9 @@ namespace Gunbond
 
             InGame = 123,
             NewMember = 30,
-            RoomModel = 31
+            RoomModel = 31,
+            Add = 32,
+            Remove = 33
         };
    
         public byte[] data;
@@ -403,6 +405,42 @@ namespace Gunbond
         }
         #endregion
 
+        public static Message CreateMessageAdd(int peerId, String roomId)
+        {
+            byte[] data = new byte[74];
+            FillHeader(data);
+            data[19] = 32;
+
+            byte[] bPeerId = ConvertIntToBytes(peerId);
+            Buffer.BlockCopy(bPeerId, 0, data, 20, 4);
+
+            byte[] bRoomId = ConvertStringToBytes(roomId, 50);
+            Buffer.BlockCopy(bRoomId, 0, data, 24, 50);
+
+            return new Message(data);
+        }
+
+        public static Message CreateMessageRemove(int peerId, int creatorId, int creatorPort, String roomId)
+        {
+            byte[] data = new byte[82];
+            FillHeader(data);
+            data[19] = 32;
+
+            byte[] bPeerId = ConvertIntToBytes(peerId);
+            Buffer.BlockCopy(bPeerId, 0, data, 20, 4);
+
+            byte[] bCreatorId = ConvertIntToBytes(creatorId);
+            Buffer.BlockCopy(bCreatorId, 0, data, 24, 4);
+
+            byte[] bCreatorPort = ConvertIntToBytes(creatorPort);
+            Buffer.BlockCopy(bCreatorPort, 0, data, 28, 4);
+
+            byte[] bRoomId = ConvertStringToBytes(roomId, 50);
+            Buffer.BlockCopy(bRoomId, 0, data, 32, 50);
+
+            return new Message(data);
+        }
+
         public static Message CreateMessageNewMember(int peerId, IPAddress IP, int listeningPort)
         {
             byte[] data = new byte[32];
@@ -602,6 +640,42 @@ namespace Gunbond
             listeningPort = ConvertBytesToInt(bListeningPort);
         }
 
+        public void GetAdd(out int peerID, out String roomID)
+        {
+            byte[] d = new byte[4];
+            d[0] = data[20];
+            d[1] = data[21];
+            d[2] = data[22];
+            d[3] = data[23];
+            peerID = ConvertBytesToInt(d);
+
+            byte[] room = new byte[50];
+            int j = 24;
+            for (int i = 0; i < 50; i++)
+            {
+                room[i] = data[j++];
+            }
+            roomID = ConvertBytesToString(room);
+        }
+
+        public void GetRemove(out int peerID, out int creatorId, out int creatorPort, out String roomID)
+        {
+            byte[] bPeerId = new byte[4];
+            Buffer.BlockCopy(data, 20, bPeerId, 0, 4);
+            peerID = ConvertBytesToInt(bPeerId);
+
+            byte[] bCreatorId = new byte[4];
+            Buffer.BlockCopy(data, 24, bCreatorId, 0, 4);
+            creatorId = ConvertBytesToInt(bCreatorId);
+
+            byte[] bCreatorPort = new byte[4];
+            Buffer.BlockCopy(data, 28, bCreatorPort, 0, 4);
+            creatorPort = ConvertBytesToInt(bCreatorPort);
+
+            byte[] bRoomId = new byte[50];
+            Buffer.BlockCopy(data, 32, bRoomId, 0, 50);
+            roomID = ConvertBytesToString(bRoomId);
+        }
 
         public void GetRoomModel(out Gunbond_Client.Model.Room room)
         {
@@ -698,6 +772,8 @@ namespace Gunbond
 
                     case 30: return MessageType.NewMember;
                     case 31: return MessageType.RoomModel;
+                    case 32: return MessageType.Add;
+                    case 33: return MessageType.Remove;
 
                     case 123: return MessageType.InGame;
 

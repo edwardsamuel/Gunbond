@@ -51,6 +51,8 @@ namespace Gunbond_Client
             gunConsole.SEND_START("///" + gunConsole.PeerId + "\\\\\\");
             Logger.WriteLine("END Send START 2");
             Console.ReadLine();
+            gunConsole.Quit();
+            Console.ReadLine();
         }
     }
 }

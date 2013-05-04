@@ -375,7 +375,6 @@ namespace GunbondTheGame
             
             //// TODO: Add your update logic here
             ProcessKeyboard();
-            //SendMsgDummy();
             if (rocketFlying)
             {
                 UpdateRocket();
@@ -392,15 +391,18 @@ namespace GunbondTheGame
             float yPos; // y position
             float power; // power
             float angle; // angle
-            int damage; // damage
-            msg.GetMessageGame(out xPos, out yPos, out angle, out power, out damage);
-            players[currentPlayer].Position.X += xPos;
-            players[currentPlayer].Position.Y += yPos;
+            float damage; // damage
+            bool isRocketFlying;
+            int PeerID;
+            msg.GetMessageGame(out xPos, out yPos, out angle, out power, out damage, out isRocketFlying, out PeerID);
+            players[currentPlayer].Position.X = xPos;
+            players[currentPlayer].Position.Y = yPos;
             players[currentPlayer].Power = power;
             players[currentPlayer].Angle = angle;
+            rocketFlying = isRocketFlying;
             rocketDamage = damage;
             System.Diagnostics.Debug.WriteLine("-----------------");
-            System.Diagnostics.Debug.WriteLine("players" + currentPlayer);
+            System.Diagnostics.Debug.WriteLine("players" + currentPlayer + PeerID);
             System.Diagnostics.Debug.WriteLine(players[currentPlayer].Position.X);
             System.Diagnostics.Debug.WriteLine(players[currentPlayer].Position.Y);
             System.Diagnostics.Debug.WriteLine(players[currentPlayer].Power);
@@ -408,10 +410,18 @@ namespace GunbondTheGame
             System.Diagnostics.Debug.WriteLine(rocketDamage);
             System.Diagnostics.Debug.WriteLine("-----------------");
         }
+
         private void SendMsgDummy()
         {   
             int i=0;
-            Message msg = Message.CreateMessageGame(1, 0, 10.0f, 100.0f, 10);
+            Message msg = Message.CreateMessageGame(
+                players[currentPlayer].Position.X,
+                players[currentPlayer].Position.Y,
+                players[currentPlayer].Angle,
+                players[currentPlayer].Power,
+                rocketDamage+1f,
+                false,
+                1);
                 ProcessMessages(msg);
             ////Message msg = Message.CreateMessageGame(1, 1, 10);
             //KeyboardState keybState = Keyboard.GetState();
@@ -419,6 +429,18 @@ namespace GunbondTheGame
             //ProcessMessages(msg);
         }
 
+        private void SendMsgDefault()
+        {
+            Message m = Message.CreateMessageGame(
+                    players[currentPlayer].Position.X,
+                    players[currentPlayer].Position.Y,
+                    players[currentPlayer].Angle,
+                    players[currentPlayer].Power,
+                    rocketDamage,
+                    false,
+                    currentPlayer);
+            ProcessMessages(m);
+        }
 
         private void UpdateRocket()
         {
@@ -540,44 +562,92 @@ namespace GunbondTheGame
         private void ProcessKeyboard()
         {
             KeyboardState keybState = Keyboard.GetState();
-     
+            //float tempPosX = players[currentPlayer].Position.X;
+            //float tempPosY = players[currentPlayer].Position.Y;
+            //float tempAngle = players[currentPlayer].Angle;
+            //float tempPower = players[currentPlayer].Power;
             // menaikkan power dengan huruf W
             // menurunkan power dengan huruf Q
             if (keybState.IsKeyDown(Keys.Q))
-                players[currentPlayer].Power -= 1;
+            {
+                players[currentPlayer].Power += 1f;
+                SendMsgDefault();
+            }
+
             if (keybState.IsKeyDown(Keys.W))
-                players[currentPlayer].Power += 1;
+            {
+                players[currentPlayer].Power -= 1f;
+                SendMsgDefault();
+            }
             // menaikkan angle dengan up arrow
             // mennurunkan angle dengan down arrow
             if (keybState.IsKeyDown(Keys.Down))
+            {
                 players[currentPlayer].Angle -= 0.01f;
-      
-            if (keybState.IsKeyDown(Keys.Up))
-                players[currentPlayer].Angle += 0.01f;
+                if (players[currentPlayer].Angle > MathHelper.PiOver2)
+                    players[currentPlayer].Angle = -MathHelper.PiOver2;
+                if (players[currentPlayer].Angle < -MathHelper.PiOver2)
+                    players[currentPlayer].Angle = MathHelper.PiOver2;
 
+                SendMsgDefault();
+            }
+
+            if (keybState.IsKeyDown(Keys.Up))
+            {
+                players[currentPlayer].Angle += 0.01f;
+                if (players[currentPlayer].Angle > MathHelper.PiOver2)
+                    players[currentPlayer].Angle = -MathHelper.PiOver2;
+                if (players[currentPlayer].Angle < -MathHelper.PiOver2)
+                    players[currentPlayer].Angle = MathHelper.PiOver2;
+
+                SendMsgDefault();
+            }
             // menggerakkan karakter ke kiri dan kanan dengan left-right arrow
             if (keybState.IsKeyDown(Keys.Left))
+            {
                 players[currentPlayer].Position.X -= 1f;
-
+                SendMsgDefault();
+            }
             if (keybState.IsKeyDown(Keys.Right))
+            {
                 players[currentPlayer].Position.X += 1f;
-            if (players[currentPlayer].Angle > MathHelper.PiOver2)
-                players[currentPlayer].Angle = -MathHelper.PiOver2;
-            if (players[currentPlayer].Angle < -MathHelper.PiOver2)
-                players[currentPlayer].Angle = MathHelper.PiOver2;
+                SendMsgDefault();
+            }
 
             if (keybState.IsKeyDown(Keys.PageDown))
+            {
                 players[currentPlayer].Power -= 20;
+                if (players[currentPlayer].Power > 500)
+                    players[currentPlayer].Power = 500;
+                if (players[currentPlayer].Power < 0)
+                    players[currentPlayer].Power = 0;
+                SendMsgDefault();
+            }
             if (keybState.IsKeyDown(Keys.PageUp))
+            {
                 players[currentPlayer].Power += 20;
-            if (players[currentPlayer].Power > 500)
-                players[currentPlayer].Power = 500;
-            if (players[currentPlayer].Power < 0)
-                players[currentPlayer].Power = 0;
-
+                if (players[currentPlayer].Power > 500)
+                    players[currentPlayer].Power = 500;
+                if (players[currentPlayer].Power < 0)
+                    players[currentPlayer].Power = 0;
+                SendMsgDefault();
+            }
+            
             if (keybState.IsKeyDown(Keys.Enter) || keybState.IsKeyDown(Keys.Space))
             {
-                rocketFlying = true;
+                Message m = Message.CreateMessageGame(
+                   players[currentPlayer].Position.X,
+                   players[currentPlayer].Position.Y,
+                   players[currentPlayer].Angle,
+                   players[currentPlayer].Power,
+                   rocketDamage,
+                   true,
+                   currentPlayer);
+                ProcessMessages(m);
+                if (rocketFlying != true)
+                {
+                    rocketFlying = true;
+                }
                 rocketPosition = players[currentPlayer].Position;
                 rocketPosition.X += 20;
                 rocketPosition.Y -= 10;

@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Content;
@@ -8,7 +10,17 @@ using Microsoft.Xna.Framework.GamerServices;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Media;
-namespace GunbondTheGame
+
+using Nuclex.Game;
+using Nuclex.Game.States;
+using Nuclex.UserInterface.Controls.Desktop;
+using Nuclex.UserInterface.Visuals.Flat;
+using Nuclex.UserInterface;
+using Nuclex.UserInterface.Controls;
+using Nuclex.Input;
+using Nuclex.Input.Devices;
+
+namespace GunBond_Client.GameStates
 {
     public struct PlayerData
     {
@@ -20,12 +32,16 @@ namespace GunbondTheGame
         public float Health;
         public Texture2D carriageTexture;
     }
-    
-    /// <summary>
-    /// This is the main type for your game
-    /// </summary>
-    public class Game1 : Microsoft.Xna.Framework.Game
+
+    class GameStart : DrawableGameState
     {
+        private IGameStateService gameStateService;
+        private IGuiService guiService;
+        private IInputService inputService;
+        private ContentManager Content;
+
+        private Screen gameStartScreen;
+
         GraphicsDeviceManager graphics;
         SpriteBatch spriteBatch;
         GraphicsDevice device;
@@ -35,11 +51,11 @@ namespace GunbondTheGame
         Texture2D rocketTexture;
         Texture2D smokeTexture;
         Texture2D groundTexture;
-        int screenWidth;
-        int screenHeight;
+        int screenWidth = 680;
+        int screenHeight = 680;
         float playerScaling;
         int currentPlayer = 0;
-        SpriteFont font;     
+        SpriteFont font;
 
         PlayerData[] players;
         int numberOfPlayers = 4;
@@ -64,13 +80,23 @@ namespace GunbondTheGame
         Color[,] rocketColorArray;
         Color[,] foregroundColorArray;
         Color[,] carriageColorArray;
-        Color[,] cannonColorArray;        
+        Color[,] cannonColorArray;
 
-        public Game1()
+        public GameStart(IGameStateService gameStateService, IGuiService guiService,
+                        IInputService inputService, GraphicsDeviceManager graphics, 
+                        ContentManager content)
         {
-            graphics = new GraphicsDeviceManager(this);
-            Content.RootDirectory = "Content";
-            IsMouseVisible = true;
+            this.gameStateService = gameStateService;
+            this.guiService = guiService;
+            this.inputService = inputService;
+            this.graphics = graphics;
+            this.Content = content;
+
+            gameStartScreen = new Screen(680, 680);
+
+            spriteBatch = new SpriteBatch(graphics.GraphicsDevice);
+
+            LoadContent();
         }
 
         /// <summary>
@@ -79,22 +105,21 @@ namespace GunbondTheGame
         /// related content.  Calling base.Initialize will enumerate through any components
         /// and initialize them as well.
         /// </summary>
-        protected override void Initialize()
+        protected override void OnEntered()
         {
+
+            guiService.Screen = gameStartScreen;
             // TODO: Add your initialization logic here
             // set size of backbuffer, which contain what will be drawn to the screen
-            graphics.PreferredBackBufferWidth = 680; 
-            graphics.PreferredBackBufferHeight = 680;
-
+            graphics.PreferredBackBufferWidth = screenWidth;
+            graphics.PreferredBackBufferHeight = screenHeight;
             graphics.IsFullScreen = false;
             graphics.ApplyChanges();
-            Window.Title = "Gunbond";
-            base.Initialize();
         }
 
         private void SetUpPlayers()
-            // initializes array of PlayerData objects
-        {            
+        // initializes array of PlayerData objects
+        {
             players = new PlayerData[numberOfPlayers];
             for (int i = 0; i < numberOfPlayers; i++)
             {
@@ -114,10 +139,10 @@ namespace GunbondTheGame
         /// LoadContent will be called once per game and is the place to load
         /// all of your content.
         /// </summary>
-        protected override void LoadContent()
+        public void LoadContent()
         {
             // Create a new SpriteBatch, which can be used to draw textures.
-            spriteBatch = new SpriteBatch(GraphicsDevice);
+        
             device = graphics.GraphicsDevice;
 
             // linking variable backgroundTexture to an img named "background"
@@ -126,8 +151,6 @@ namespace GunbondTheGame
             // linking variable foregroundTexture to an img named "foreground"
             // foregroundTexture = Content.Load<Texture2D>("foreground");
 
-            screenHeight = device.PresentationParameters.BackBufferHeight;
-            screenWidth = device.PresentationParameters.BackBufferWidth;
 
             // array of CariageTexture
             carriageTexture[0] = Content.Load<Texture2D>("P1");
@@ -168,7 +191,7 @@ namespace GunbondTheGame
         }
 
         private void GenerateTerrainContour()
-            // initializes array of coordinates and fills it with values
+        // initializes array of coordinates and fills it with values
         {
             terrainContour = new int[screenWidth];
 
@@ -176,7 +199,7 @@ namespace GunbondTheGame
             double rand2 = randomizer.NextDouble() + 2;
             double rand3 = randomizer.NextDouble() + 5;
 
-            float offset = screenHeight*(float)(0.6);
+            float offset = screenHeight * (float)(0.6);
             float peakheight = 80;
             float flatness = 70;
 
@@ -282,30 +305,30 @@ namespace GunbondTheGame
                         int xPos = (int)player.Position.X;
                         int yPos = (int)player.Position.Y;
 
-                        
+
                         Matrix carriageMat = Matrix.CreateTranslation(0, -player.carriageTexture.Height, 0) * Matrix.CreateScale(playerScaling) * Matrix.CreateTranslation(xPos, yPos, 0);
-                        Vector2 carriageCollisionPoint = TexturesCollide(carriageColorArray, carriageMat, rocketColorArray, rocketMat);                        
+                        Vector2 carriageCollisionPoint = TexturesCollide(carriageColorArray, carriageMat, rocketColorArray, rocketMat);
                         if (carriageCollisionPoint.X > -1)
                         {
                             players[i].Health -= players[currentPlayer].Power / 3;
                             if (players[i].Health == 0)
                             {
                                 players[i].IsAlive = false;
-                            }                            
+                            }
                             return carriageCollisionPoint;
                         }
 
-                        Matrix cannonMat = Matrix.CreateTranslation(-11, -50, 0) * Matrix.CreateRotationZ(player.Angle) * Matrix.CreateScale(playerScaling) * Matrix.CreateTranslation(xPos + 20, yPos - 10, 0);
-                        Vector2 cannonCollisionPoint = TexturesCollide(cannonColorArray, cannonMat, rocketColorArray, rocketMat);
-                        if (cannonCollisionPoint.X > -1)
-                        {
-                            players[i].Health -= players[currentPlayer].Power;
-                            if (players[i].Health == 0)
-                            {
-                                players[i].IsAlive = false;
-                            } 
-                            return cannonCollisionPoint;
-                        }
+                        //Matrix cannonMat = Matrix.CreateTranslation(-11, -50, 0) * Matrix.CreateRotationZ(player.Angle) * Matrix.CreateScale(playerScaling) * Matrix.CreateTranslation(xPos + 20, yPos - 10, 0);
+                        //Vector2 cannonCollisionPoint = TexturesCollide(cannonColorArray, cannonMat, rocketColorArray, rocketMat);
+                        //if (cannonCollisionPoint.X > -1)
+                        //{
+                        //    players[i].Health -= players[currentPlayer].Power;
+                        //    if (players[i].Health == 0)
+                        //    {
+                        //        players[i].IsAlive = false;
+                        //    }
+                        //    return cannonCollisionPoint;
+                        //}
                     }
                 }
             }
@@ -353,56 +376,45 @@ namespace GunbondTheGame
             }
         }
 
-        /// <summary>
-        /// UnloadContent will be called once per game and is the place to unload
-        /// all content.
-        /// </summary>
-        protected override void UnloadContent()
-        {
-            // TODO: Unload any non ContentManager content here
-        }
 
         /// <summary>
         /// Allows the game to run logic such as updating the world,
         /// checking for collisions, gathering input, and playing audio.
         /// </summary>
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
-        protected override void Update(GameTime gameTime)
+        public override void Update(GameTime gameTime)
         {
             // Allows the game to exit
-            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
-                this.Exit();
-            
+            //if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
+            //    this.Exit();
+
             //// TODO: Add your update logic here
             ProcessKeyboard();
+            //SendMsgDummy();
             if (rocketFlying)
             {
                 UpdateRocket();
                 CheckCollisions(gameTime);
             }
-            base.Update(gameTime);        
         }
 
-      
 
-		private void ProcessMessages(Message msg)
+
+        private void ProcessMessages(Message msg)
         {
             float xPos; // x position
             float yPos; // y position
             float power; // power
             float angle; // angle
-            float damage; // damage
-            bool isRocketFlying;
-            int PeerID;
-            msg.GetMessageGame(out xPos, out yPos, out angle, out power, out damage, out isRocketFlying, out PeerID);
-            players[currentPlayer].Position.X = xPos;
-            players[currentPlayer].Position.Y = yPos;
+            int damage; // damage
+            msg.GetMessageGame(out xPos, out yPos, out angle, out power, out damage);
+            players[currentPlayer].Position.X += xPos;
+            players[currentPlayer].Position.Y += yPos;
             players[currentPlayer].Power = power;
             players[currentPlayer].Angle = angle;
-            rocketFlying = isRocketFlying;
             rocketDamage = damage;
             System.Diagnostics.Debug.WriteLine("-----------------");
-            System.Diagnostics.Debug.WriteLine("players" + currentPlayer + PeerID);
+            System.Diagnostics.Debug.WriteLine("players" + currentPlayer);
             System.Diagnostics.Debug.WriteLine(players[currentPlayer].Position.X);
             System.Diagnostics.Debug.WriteLine(players[currentPlayer].Position.Y);
             System.Diagnostics.Debug.WriteLine(players[currentPlayer].Power);
@@ -412,34 +424,14 @@ namespace GunbondTheGame
         }
 
         private void SendMsgDummy()
-        {   
-            int i=0;
-            Message msg = Message.CreateMessageGame(
-                players[currentPlayer].Position.X,
-                players[currentPlayer].Position.Y,
-                players[currentPlayer].Angle,
-                players[currentPlayer].Power,
-                rocketDamage+1f,
-                false,
-                1);
-                ProcessMessages(msg);
+        {
+            int i = 0;
+            Message msg = Message.CreateMessageGame(1, 0, 10.0f, 100.0f, 10);
+            ProcessMessages(msg);
             ////Message msg = Message.CreateMessageGame(1, 1, 10);
             //KeyboardState keybState = Keyboard.GetState();
             //if (keybState.IsKeyDown(Keys.Space))
             //ProcessMessages(msg);
-        }
-
-        private void SendMsgDefault()
-        {
-            Message m = Message.CreateMessageGame(
-                    players[currentPlayer].Position.X,
-                    players[currentPlayer].Position.Y,
-                    players[currentPlayer].Angle,
-                    players[currentPlayer].Power,
-                    rocketDamage,
-                    false,
-                    currentPlayer);
-            ProcessMessages(m);
         }
 
         private void UpdateRocket()
@@ -476,27 +468,23 @@ namespace GunbondTheGame
         /// This is called when the game should draw itself.
         /// </summary>
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
-        protected override void Draw(GameTime gameTime)
-        {
-            GraphicsDevice.Clear(Color.CornflowerBlue);
-
+        public override void Draw(GameTime gameTime)
+        {            
             // TODO: Add your drawing code here
 
             // starting the spriteBatch first before drawing images
             spriteBatch.Begin();
             DrawScenery();
             DrawCannon();
-            DrawPlayers();            
+            DrawPlayers();
             DrawText();
             DrawRocket();
             DrawSmoke();
             spriteBatch.End();
-
-            base.Draw(gameTime);
         }
 
         private void DrawScenery()
-        { 
+        {
             // draw a rectangle that covers the entire window, which
             // upper-left corner in the (0,0) pxl, having width & height of the screen:
             Rectangle screenRectangle = new Rectangle(0, 0, screenWidth, screenHeight);
@@ -538,8 +526,8 @@ namespace GunbondTheGame
         {
             PlayerData player = players[currentPlayer];
             int currentAngle = (int)MathHelper.ToDegrees(player.Angle);
-     
-            spriteBatch.DrawString(font, "Cannon angle: " + currentAngle.ToString(), new Vector2(20,20), Color.Black);
+
+            spriteBatch.DrawString(font, "Cannon angle: " + currentAngle.ToString(), new Vector2(20, 20), Color.Black);
             spriteBatch.DrawString(font, "Cannon power: " + player.Power.ToString(), new Vector2(20, 45), Color.White);
             spriteBatch.DrawString(font, "Life: " + player.Health.ToString(), new Vector2(20, 65), Color.Black);
         }
@@ -548,8 +536,8 @@ namespace GunbondTheGame
         {
             if (rocketFlying)
             {
-           
-                spriteBatch.Draw(rocketTexture, rocketPosition, null, Color.White, rocketAngle, new Vector2(42,240), 0.1f, SpriteEffects.None, 1);
+
+                spriteBatch.Draw(rocketTexture, rocketPosition, null, Color.White, rocketAngle, new Vector2(42, 240), 0.1f, SpriteEffects.None, 1);
             }
         }
 
@@ -562,92 +550,44 @@ namespace GunbondTheGame
         private void ProcessKeyboard()
         {
             KeyboardState keybState = Keyboard.GetState();
-            //float tempPosX = players[currentPlayer].Position.X;
-            //float tempPosY = players[currentPlayer].Position.Y;
-            //float tempAngle = players[currentPlayer].Angle;
-            //float tempPower = players[currentPlayer].Power;
+
             // menaikkan power dengan huruf W
             // menurunkan power dengan huruf Q
             if (keybState.IsKeyDown(Keys.Q))
-            {
-                players[currentPlayer].Power += 1f;
-                SendMsgDefault();
-            }
-
+                players[currentPlayer].Power -= 1;
             if (keybState.IsKeyDown(Keys.W))
-            {
-                players[currentPlayer].Power -= 1f;
-                SendMsgDefault();
-            }
+                players[currentPlayer].Power += 1;
             // menaikkan angle dengan up arrow
             // mennurunkan angle dengan down arrow
             if (keybState.IsKeyDown(Keys.Down))
-            {
                 players[currentPlayer].Angle -= 0.01f;
-                if (players[currentPlayer].Angle > MathHelper.PiOver2)
-                    players[currentPlayer].Angle = -MathHelper.PiOver2;
-                if (players[currentPlayer].Angle < -MathHelper.PiOver2)
-                    players[currentPlayer].Angle = MathHelper.PiOver2;
-
-                SendMsgDefault();
-            }
 
             if (keybState.IsKeyDown(Keys.Up))
-            {
                 players[currentPlayer].Angle += 0.01f;
-                if (players[currentPlayer].Angle > MathHelper.PiOver2)
-                    players[currentPlayer].Angle = -MathHelper.PiOver2;
-                if (players[currentPlayer].Angle < -MathHelper.PiOver2)
-                    players[currentPlayer].Angle = MathHelper.PiOver2;
 
-                SendMsgDefault();
-            }
             // menggerakkan karakter ke kiri dan kanan dengan left-right arrow
             if (keybState.IsKeyDown(Keys.Left))
-            {
                 players[currentPlayer].Position.X -= 1f;
-                SendMsgDefault();
-            }
+
             if (keybState.IsKeyDown(Keys.Right))
-            {
                 players[currentPlayer].Position.X += 1f;
-                SendMsgDefault();
-            }
+            if (players[currentPlayer].Angle > MathHelper.PiOver2)
+                players[currentPlayer].Angle = -MathHelper.PiOver2;
+            if (players[currentPlayer].Angle < -MathHelper.PiOver2)
+                players[currentPlayer].Angle = MathHelper.PiOver2;
 
             if (keybState.IsKeyDown(Keys.PageDown))
-            {
                 players[currentPlayer].Power -= 20;
-                if (players[currentPlayer].Power > 500)
-                    players[currentPlayer].Power = 500;
-                if (players[currentPlayer].Power < 0)
-                    players[currentPlayer].Power = 0;
-                SendMsgDefault();
-            }
             if (keybState.IsKeyDown(Keys.PageUp))
-            {
                 players[currentPlayer].Power += 20;
-                if (players[currentPlayer].Power > 500)
-                    players[currentPlayer].Power = 500;
-                if (players[currentPlayer].Power < 0)
-                    players[currentPlayer].Power = 0;
-                SendMsgDefault();
-            }
-            
+            if (players[currentPlayer].Power > 500)
+                players[currentPlayer].Power = 500;
+            if (players[currentPlayer].Power < 0)
+                players[currentPlayer].Power = 0;
+
             if (keybState.IsKeyDown(Keys.Enter) || keybState.IsKeyDown(Keys.Space))
             {
-                Message m = Message.CreateMessageGame(
-                   players[currentPlayer].Position.X,
-                   players[currentPlayer].Position.Y,
-                   players[currentPlayer].Angle,
-                   players[currentPlayer].Power,
-                   rocketDamage,
-                   true,
-                   currentPlayer);
-                ProcessMessages(m);
-                if (rocketFlying != true)
-                {
-                    rocketFlying = true;
-                }
+                rocketFlying = true;
                 rocketPosition = players[currentPlayer].Position;
                 rocketPosition.X += 20;
                 rocketPosition.Y -= 10;

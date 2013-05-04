@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 using System.Diagnostics;
-namespace GunbondTheGame
+namespace GunBond_Client
 {
     public class Message
     {
@@ -26,8 +26,7 @@ namespace GunbondTheGame
             Join = 253,
             Start = 252,
             Quit = 235,
-            InGame = 123,
-            Exit = 119
+            InGame = 123
         };
 
         #region Message Room Body
@@ -400,72 +399,54 @@ namespace GunbondTheGame
             return m;
         }
 
-        public static Message CreateMessageExit()
-        {
-            byte[] data = new byte[20];
-            FillHeader(data);
-            data[19] = 119;
-
-            Message m = new Message();
-            m.data = data;
-            return m;
-        }
-
         #region MessageGame
-        public static Message CreateMessageGame(float x, float y, float angle, float power, float damage, bool isRocketFlying, int peerId)
+        public static Message CreateMessageGame(float x, float y, float angle, float power, int damage)
         {
-            byte[] data = new byte[45];
+            byte[] data = new byte[32];
             FillHeader(data);
-            //data[0..18] = 0 for FillHeader(data)
-
+            //data[0] = (byte)'G';
+            //data[1] = (byte)'U';
+            //data[2] = (byte)'N';
+            //data[3] = (byte)'B';
+            //data[4] = (byte)'O';
+            //data[5] = (byte)'N';
+            //data[6] = (byte)'D';
+            //data[7] = (byte)'G';
+            //data[8] = (byte)'A';
+            //data[9] = (byte)'M';
+            //data[10] = (byte)'E';
+            //data[11..14] for x position
+            byte[] temp = BitConverter.GetBytes(x);
+            data[11] = temp[0];
+            data[12] = temp[1];
+            data[13] = temp[2];
+            data[14] = temp[3];
+            //data[15..18] for y position
+            byte[] temp2 = BitConverter.GetBytes(y);
+            data[15] = temp2[0];
+            data[16] = temp2[1];
+            data[17] = temp2[2];
+            data[18] = temp2[3];
             //data[19] for Message Type
             data[19] = 123;
-
-            // data[20..23] for X position
-            byte[] temp0 = BitConverter.GetBytes(x);
-            data[20] = temp0[0];
-            data[21] = temp0[1];
-            data[22] = temp0[2];
-            data[23] = temp0[3];
-
-            // data[24..27] for Y position
-            byte[] temp = BitConverter.GetBytes(y);
-            data[24] = temp[0];
-            data[25] = temp[1];
-            data[26] = temp[2];
-            data[27] = temp[3];
-
-            //data[28..31] for angle
+            //data[20..23] for angle
             byte[] temp3 = BitConverter.GetBytes(angle);
-            data[28] = temp3[0];
-            data[29] = temp3[1];
-            data[30] = temp3[2];
-            data[31] = temp3[3];
-
-            //data[32..35] for power
+            data[20] = temp3[0];
+            data[21] = temp3[1];
+            data[22] = temp3[2];
+            data[23] = temp3[3];
+            //data[24..27] for power
             byte[] temp4 = BitConverter.GetBytes(power);
-            data[32] = temp4[0];
-            data[33] = temp4[1];
-            data[34] = temp4[2];
-            data[35] = temp4[3];
-
-            //data[36..39] for damage
-            byte[] temp5 = BitConverter.GetBytes(damage);
-            data[36] = temp5[0];
-            data[37] = temp5[1];
-            data[38] = temp5[2];
-            data[39] = temp5[3];
-
-            //data[40] for isRocketFlying
-            data[40] = Convert.ToByte(isRocketFlying);
-
-            // data[41..44] for peerId
-            byte[] id = ConvertIntToByte(peerId);
-            data[41] = id[0];
-            data[42] = id[1];
-            data[43] = id[2];
-            data[44] = id[3];
-
+            data[24] = temp4[0];
+            data[25] = temp4[1];
+            data[26] = temp4[2];
+            data[27] = temp4[3];
+            //data[28..31] for damage
+            byte[] temp5 = ConvertIntToByte(damage);
+            data[28] = temp5[0];
+            data[29] = temp5[1];
+            data[30] = temp5[2];
+            data[31] = temp5[3];
             Message m = new Message();
             m.data = data;
             return m;
@@ -626,48 +607,40 @@ namespace GunbondTheGame
             peerID = ConvertBytesToInt(d);
         }
 
-        public void GetExit(out int peerID)
-        {
-            byte[] d = new byte[4];
-            Buffer.BlockCopy(data, 20, d, 0, 4);
-            peerID = ConvertBytesToInt(d);
-        }
-
         #region GetMessageGame
-        public void GetMessageGame(out float xPos, out float yPos, out float angle, out float power, out float damage, out bool isRocketFlying, out int PeerID)
+        public void GetMessageGame(out float x, out float y, out float angle, out float power, out int damage)
         {
-            //data[0..18] = 0 for FillHeader(data)
-
-            //data[19] for Message Type
             byte[] d = new byte[4];
-            // data[20..23] for X positionn
-            Buffer.BlockCopy(data,20,d,0,4);
-            xPos = BitConverter.ToSingle(d,0);
-            
-            // data[24..27] for Y position
-            Buffer.BlockCopy(data,24,d,0,4);
-            yPos = BitConverter.ToSingle(d,0);
-            
-            //data[28..31] for angle
-            Buffer.BlockCopy(data,28,d,0,4);
+            //data[11..14] for x position
+            d[0] = data[11];
+            d[1] = data[12];
+            d[2] = data[13];
+            d[3] = data[14];
+            x = BitConverter.ToSingle(d,0);
+            //data[15..18] for y position
+            d[0] = data[15];
+            d[1] = data[16];
+            d[2] = data[17];
+            d[3] = data[18];
+            y = BitConverter.ToSingle(d,0);
+            //data[20..23] for angle
+            d[0] = data[20];
+            d[1] = data[21];
+            d[2] = data[22];
+            d[3] = data[23];
             angle = BitConverter.ToSingle(d,0);
-
-            //data[32..35] for power
-            Buffer.BlockCopy(data,32,d,0,4);
+            //data[24..27] for power
+            d[0] = data[24];
+            d[1] = data[25];
+            d[2] = data[26];
+            d[3] = data[27];
             power = BitConverter.ToSingle(d,0);
-
-            //data[36..39] for damage
-            Buffer.BlockCopy(data,36,d,0,4);
-            damage = BitConverter.ToSingle(d,0);
-
-            //data[40] for isRocketFlying
-            byte[] b = new byte [1];
-            Buffer.BlockCopy(data,40,b,0,1);
-            isRocketFlying = BitConverter.ToBoolean(d,0);
-
-            //data[41..44] for peerId
-            Buffer.BlockCopy(data, 41, d, 0, 4);
-            PeerID = ConvertBytesToInt(d);
+            //data[28..31] for damage
+            d[0] = data[28];
+            d[1] = data[29];
+            d[2] = data[30];
+            d[3] = data[31];
+            damage = ConvertBytesToInt(d);
         }
         #endregion
 
@@ -690,7 +663,6 @@ namespace GunbondTheGame
                     case 252: return MessageType.Start;
                     case 235: return MessageType.Quit;
                     case 123: return MessageType.InGame;
-                    case 119: return MessageType.Exit;
 
                     default: return MessageType.Unknown;
                 }

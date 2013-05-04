@@ -89,9 +89,6 @@ namespace GunBond_Client.GameStates
         Color[,] carriageColorArray;
         Color[,] cannonColorArray;
 
-        int[] turnA;
-        int[] turnB;
-
         public GameStart(IGameStateService gameStateService, IGuiService guiService,
                         IInputService inputService, GraphicsDeviceManager graphics, 
                         ContentManager content)

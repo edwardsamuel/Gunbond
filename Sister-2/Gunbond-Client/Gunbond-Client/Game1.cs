@@ -19,22 +19,12 @@ namespace Gunbond_Client
     {
         GraphicsDeviceManager graphics;
         SpriteBatch spriteBatch;
+		 public static readonly GunConsole main_console = new GunConsole("peer.xml");
 
         public Game1()
         {
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
-
-            GunConsole gunConsole = new GunConsole("peerConf.xml");
-            Logger.Active = true;
-            gunConsole.ConnectTracker();
-            //gunConsole.CreateRoom("liluu", 4);
-            var list = gunConsole.ListRooms();
-            Logger.WriteLine(list);
-            if (list != null)
-            {
-                gunConsole.JoinRoom(list[0].roomId);
-            }
         }
 
         /// <summary>

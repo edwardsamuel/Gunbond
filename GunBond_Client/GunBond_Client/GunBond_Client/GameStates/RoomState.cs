@@ -77,7 +77,7 @@ namespace GunBond_Client.GameStates
         {
             if (isStart)
             {
-                DrawableGameState state = new GameStart(gameStateService, guiService, inputService, graphics, content, Game1.main_console.Room.Members.Count);
+                DrawableGameState state = new GameStart(gameStateService, guiService, inputService, graphics, content);
                 gameStateService.Switch(state);
                 Game1.main_console.StartEvent -= Start;
             }
@@ -311,7 +311,7 @@ namespace GunBond_Client.GameStates
         {
             Game1.main_console.StartGame();
 
-            DrawableGameState state = new GameStart(gameStateService, guiService, inputService, graphics, content, Game1.main_console.Room.Members.Count);
+            DrawableGameState state = new GameStart(gameStateService, guiService, inputService, graphics, content);
             gameStateService.Switch(state);
             Game1.main_console.StartEvent -= Start;
         }

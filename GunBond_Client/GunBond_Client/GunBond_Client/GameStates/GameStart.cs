@@ -424,6 +424,7 @@ namespace GunBond_Client.GameStates
                     if (mouseState.X > 300 && mouseState.X < 500 && mouseState.Y < 400 && mouseState.Y > 250 && mouseState.LeftButton == ButtonState.Pressed && prev.LeftButton == ButtonState.Released)
                     {
                         //gamestate = GameState.BackToRoom;                        
+                        Game1.main_console.Room.Reset();
                         DrawableGameState state = new RoomState(previousState, gameStateService, guiService, inputService, graphics, Content);
                         gameStateService.Switch(state);
                     }

@@ -69,14 +69,21 @@ namespace Gunbond_Client.Model
         }
         #endregion
 
-
-
         public Peer(int peerId, IPAddress IPAddress, int listeningPort)
         {
             this.PeerId = peerId;
             this.IPAddress = IPAddress;
             this.ListeningPort = listeningPort;
 
+            this.IsAlive = true;
+            this.Angle = MathHelper.ToRadians(90);
+            this.Power = 100;
+            this.Health = 500;
+            this.Position = new Vector2();
+        }
+
+        public void Reset()
+        {
             this.IsAlive = true;
             this.Angle = MathHelper.ToRadians(90);
             this.Power = 100;

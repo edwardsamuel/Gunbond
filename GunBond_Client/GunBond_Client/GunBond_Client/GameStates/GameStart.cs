@@ -637,17 +637,19 @@ namespace GunBond_Client.GameStates
             Peer player = currentPlayer;
             int currentAngle = (int)MathHelper.ToDegrees(player.Angle);
 
-            spriteBatch.DrawString(font, "ID: " + player.PeerId, new Vector2(20, 20), Color.Black);
+            spriteBatch.DrawString(font, "Current Player: " + player.PeerId, new Vector2(20, 20), Color.Black);
             spriteBatch.DrawString(font, "Cannon angle: " + currentAngle.ToString(), new Vector2(20, 45), Color.Black);
             spriteBatch.DrawString(font, "Cannon power: " + player.Power.ToString(), new Vector2(20, 70), Color.White);
             spriteBatch.DrawString(font, "Life: " + player.Health.ToString(), new Vector2(20, 95), Color.Black);
             spriteBatch.DrawString(font, "Time remaining: " + (20 - clock.TotalSeconds), new Vector2(300, 20), Color.Black);
+            spriteBatch.DrawString(font, "ID: " + Game1.main_console.PeerId, new Vector2(300, 45), Color.Black);
 
             foreach (var p in teamA)
             {
                 if (p.IsAlive)
                 {
-                    spriteBatch.DrawString(font, p.PeerId.ToString(), new Vector2(p.Position.X, p.Position.Y - 100), Color.Blue);    
+                    spriteBatch.DrawString(font, p.PeerId.ToString(), new Vector2(p.Position.X, p.Position.Y - 100), Color.Blue);
+                    spriteBatch.DrawString(font, p.Health.ToString(), new Vector2(p.Position.X, p.Position.Y - 80), Color.Blue);
                 }                
             }
 
@@ -656,6 +658,7 @@ namespace GunBond_Client.GameStates
                 if (p.IsAlive)
                 {
                     spriteBatch.DrawString(font, p.PeerId.ToString(), new Vector2(p.Position.X, p.Position.Y - 100), Color.Red);
+                    spriteBatch.DrawString(font, p.Health.ToString(), new Vector2(p.Position.X, p.Position.Y - 80), Color.Red);
                 }
             }
             

@@ -69,7 +69,7 @@ namespace GunBond_Client.GameStates
         Vector2 rocketDirection;
         float rocketAngle;
         float rocketScaling = 0.1f;
-        float rocketDamage;
+
         // smoke:
         List<Vector2> smokeList = new List<Vector2>();
         Random randomizer = new Random();
@@ -103,6 +103,7 @@ namespace GunBond_Client.GameStates
             gameStartScreen = new Screen(680, 680);
 
             spriteBatch = new SpriteBatch(graphics.GraphicsDevice);
+            Game1.main_console.GameEvent += ProcessMessages;
 
             this.teamA = teamA;
             this.teamB = teamB;
@@ -392,8 +393,8 @@ namespace GunBond_Client.GameStates
 
             //// TODO: Add your update logic here
             clock += gameTime.ElapsedGameTime;
-            if (clock.Seconds >= 20)
-            {
+            if (clock.TotalSeconds >= 20)
+            {                
                 NextPlayer();
             }
 
@@ -523,6 +524,16 @@ namespace GunBond_Client.GameStates
         private void NextPlayer()
         // increment the currentPlayer value
         {
+            if(teamA.FindIndex(fpeer => fpeer.IsAlive == true) == -1)
+            {
+                return;
+            }
+
+            if (teamB.FindIndex(fpeer => fpeer.IsAlive == true) == -1)
+            {
+                return;
+            }
+
             if (teamA.FindIndex(fpeer => fpeer == currentPlayer) >= 0)
             {
                 do
@@ -549,7 +560,7 @@ namespace GunBond_Client.GameStates
                 }
                 while (!currentPlayer.IsAlive);
             }
-
+            clock = TimeSpan.Zero;
         }
 
         /// <summary>
@@ -629,7 +640,7 @@ namespace GunBond_Client.GameStates
             spriteBatch.DrawString(font, "Cannon angle: " + currentAngle.ToString(), new Vector2(20, 20), Color.Black);
             spriteBatch.DrawString(font, "Cannon power: " + player.Power.ToString(), new Vector2(20, 45), Color.White);
             spriteBatch.DrawString(font, "Life: " + player.Health.ToString(), new Vector2(20, 65), Color.Black);
-            spriteBatch.DrawString(font, "Time remaining: " + clock.ToString(), new Vector2(300, 20), Color.Black);
+            spriteBatch.DrawString(font, "Time remaining: " + (20 - clock.TotalSeconds), new Vector2(300, 20), Color.Black);
         }
 
         private void DrawRocket()

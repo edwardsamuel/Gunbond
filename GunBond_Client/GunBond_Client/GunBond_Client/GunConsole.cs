@@ -181,7 +181,6 @@ namespace Gunbond_Client
         public event GameHandler GameEvent;
         public event GameHandler StartEvent;
 
-
         public GunConsole(string fileName)
         {
             _config = new ClientConfig();
@@ -589,43 +588,43 @@ namespace Gunbond_Client
 
         private void SendAliveNextPeer()
         {
-            try
-            {
-                while (true)
-                {
-                    Logger.WriteLine("SendAliveNextPeer");
-                    byte[] buffer = new byte[1024];
+            //try
+            //{
+            //    while (true)
+            //    {
+            //        Logger.WriteLine("SendAliveNextPeer");
+            //        byte[] buffer = new byte[1024];
 
-                    lock (nextPeerPaddle)
-                    {
-                        Message mes = Message.CreateMessageKeepAlive(PeerId);
-                        nextPeerSocket.Send(mes.data, 0, mes.data.Length, SocketFlags.None);
-                        nextPeerSocket.Receive(buffer, 0, buffer.Length, SocketFlags.None);
-                    }
+            //        lock (nextPeerPaddle)
+            //        {
+            //            Message mes = Message.CreateMessageKeepAlive(PeerId);
+            //            nextPeerSocket.Send(mes.data, 0, mes.data.Length, SocketFlags.None);
+            //            nextPeerSocket.Receive(buffer, 0, buffer.Length, SocketFlags.None);
+            //        }
 
-                    Message response = new Message(buffer);
-                    if (response.GetMessageType() == Message.MessageType.KeepAlive)
-                    {
-                        Logger.WriteLine("KeepAlive to next peer success.");
-                        Thread.Sleep(Configuration.MaxTimeout / 2);
-                    }
-                    else
-                    {
-                        Logger.WriteLine("Message KeepAlive reply from next peer has not been received.");
-                        lock (nextPeerPaddle)
-                        {
-                            Logger.WriteLine("Closing connection " + (nextPeerSocket.RemoteEndPoint as IPEndPoint).Address + ":" + (nextPeerSocket.RemoteEndPoint as IPEndPoint).Port);
-                            nextPeerSocket.Close();
-                        }
-                        break;
-                    }
-                    Logger.WriteLine();
-                }
-            }
-            catch (Exception e)
-            {
-                Logger.WriteLine(e.Message);
-            }
+            //        Message response = new Message(buffer);
+            //        if (response.GetMessageType() == Message.MessageType.KeepAlive)
+            //        {
+            //            Logger.WriteLine("KeepAlive to next peer success.");
+            //            Thread.Sleep(Configuration.MaxTimeout / 2);
+            //        }
+            //        else
+            //        {
+            //            Logger.WriteLine("Message KeepAlive reply from next peer has not been received.");
+            //            lock (nextPeerPaddle)
+            //            {
+            //                Logger.WriteLine("Closing connection " + (nextPeerSocket.RemoteEndPoint as IPEndPoint).Address + ":" + (nextPeerSocket.RemoteEndPoint as IPEndPoint).Port);
+            //                nextPeerSocket.Close();
+            //            }
+            //            break;
+            //        }
+            //        Logger.WriteLine();
+            //    }
+            //}
+            //catch (Exception e)
+            //{
+            //    Logger.WriteLine(e.Message);
+            //}
         }
         #endregion
 
@@ -881,6 +880,7 @@ namespace Gunbond_Client
                     }
                     else if (requestType == Message.MessageType.Quit)
                     {
+                        #region Quit
                         int peerId;
                         request.GetQuit(out peerId);
                         Peer peer = Room.Members.Find(fpeer => fpeer.PeerId == peerId);
@@ -980,12 +980,22 @@ namespace Gunbond_Client
                             }
                         }
                         Room.Members.Remove(peer);
+                        #endregion
                     }
                     else if (requestType == Message.MessageType.InGame)
                     {
-                        if (GameEvent != null)
+                        float x, y, angle, power, damage;
+                        bool isRocketFlying;
+                        int peerId;
+                        request.GetMessageGame(out x, out y, out angle, out power, out damage, out isRocketFlying, out peerId);
+                        if (peerId != PeerId)
                         {
-                            GameEvent(request);
+                            if (GameEvent != null)
+                            {
+                                GameEvent(request);
+                            }
+                            response = request;
+                            nextPeerSocket.Send(response.data, 0, response.data.Length, SocketFlags.None);                            
                         }
                     }
                 }
@@ -1089,5 +1099,13 @@ namespace Gunbond_Client
                 nextPeerSocket.Send(m.data, 0, m.data.Length, SocketFlags.None);
             }
         }
+
+        public Message SendGame(float x, float y, float angle, float power, float damage, bool isRocketFlying, int peerId)
+        {
+            Message m = Message.CreateMessageGame(x, y, angle, power, damage, isRocketFlying, peerId);
+            nextPeerSocket.Send(m.data, 0, m.data.Length, SocketFlags.None);
+            return m;
+        }
+
     }
 }

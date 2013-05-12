@@ -326,8 +326,8 @@ namespace Gunbond
 
         public static Message CreateMessageStart(int peerID, String roomID, List<int> TeamA, List<int>TeamB)
         {
-            int i = 71;
             byte[] data = new byte[114];
+
             // data [0..18] Header
             // data [19] Message type
             // data [20..23] PeerID
@@ -342,12 +342,12 @@ namespace Gunbond
             byte[] bRoomId = ConvertStringToBytes(roomID, 50);
             Buffer.BlockCopy(bRoomId, 0, data, 24, 50);
 
-
+            int i = 74;
             // berisi 8 int urutan players
             foreach (var x in TeamA)
             {
                 byte[] player = ConvertIntToBytes(x);
-                Buffer.BlockCopy(player, 0, data, i + 4, 4);
+                Buffer.BlockCopy(player, 0, data, i, 4);
                 i = i + 4;
             }
             
@@ -360,7 +360,7 @@ namespace Gunbond
             foreach (var x in TeamB)
             {
                 byte[] player = ConvertIntToBytes(x);
-                Buffer.BlockCopy(player, 0, data, i + 4, 4);
+                Buffer.BlockCopy(player, 0, data, i, 4);
                 i = i + 4;
             }
 
@@ -684,27 +684,28 @@ namespace Gunbond
             roomID = ConvertBytesToString(room);
 
             TeamA = new List<int>();
+            int k = 74;
             int p;
             do
             {
                 byte[] player = new byte[4];
-                Buffer.BlockCopy(data, j, player, 0, 4);
+                Buffer.BlockCopy(data, k, player, 0, 4);
                 p = ConvertBytesToInt (player);
-                j += 4;
+                k += 4;
 
                 if (p > -1)
                 {
                     TeamA.Add(p);
                 }
-            }while (p > -1);
+            } while (p > -1);
 
             TeamB = new List<int>();
             do
             {
                 byte[] player = new byte[4];
-                Buffer.BlockCopy(data, j, player, 0, 4);
+                Buffer.BlockCopy(data, k, player, 0, 4);
                 p = ConvertBytesToInt(player);
-                j += 4;
+                k += 4;
 
                 if (p > -1)
                 {

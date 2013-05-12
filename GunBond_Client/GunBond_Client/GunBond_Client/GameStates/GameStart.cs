@@ -467,6 +467,7 @@ namespace GunBond_Client.GameStates
             bool isRocketFlying;
             int PeerID;
             msg.GetMessageGame(out xPos, out yPos, out angle, out power, out damage, out isRocketFlying, out PeerID);
+
             currentPlayer.Position.X = xPos;
             currentPlayer.Position.Y = yPos;
             currentPlayer.Power = power;
@@ -487,15 +488,14 @@ namespace GunBond_Client.GameStates
 
 		private void SendMsgDefault()
         {
-            Message m = Message.CreateMessageGame(
+            ProcessMessages(Game1.main_console.SendGame(
                 currentPlayer.Position.X,
                 currentPlayer.Position.Y,
                 currentPlayer.Angle,
                 currentPlayer.Power,
                 rocketDamage,
                 false,
-                currentPlayer.PeerId);
-            ProcessMessages(m);
+                currentPlayer.PeerId));
         }
 
         private void UpdateRocket()
@@ -506,7 +506,7 @@ namespace GunBond_Client.GameStates
                 Vector2 gravity = new Vector2(0, 1);
                 rocketDirection += gravity / 10.0f;
                 rocketPosition += rocketDirection;
-                rocketAngle = (float)Math.Atan2(rocketDirection.X, -rocketDirection.Y);
+                rocketAngle = (float) Math.Atan2(rocketDirection.X, -rocketDirection.Y);
 
                 // update smoke trails
                 for (int i = 0; i < 5; i++)

@@ -95,6 +95,10 @@ namespace GunBond_Client.GameStates
                 roomScreen.Desktop.Children.Remove(playerIDLabels[x]);
                 panelVisibility[x] = false;
             }
+            if (Game1.main_console.Room == null)
+            {
+                return;
+            }
             
             int i = 0;
             while (i < Game1.main_console.Room.Members.Count)

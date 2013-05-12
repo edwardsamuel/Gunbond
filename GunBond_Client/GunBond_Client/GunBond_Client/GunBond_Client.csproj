@@ -60,7 +60,7 @@
     <XnaCompressContent>true</XnaCompressContent>
   </PropertyGroup>
   <PropertyGroup>
-    <StartupObject />
+    <StartupObject>Gunbond_Client.Program</StartupObject>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="LzmaSharp">

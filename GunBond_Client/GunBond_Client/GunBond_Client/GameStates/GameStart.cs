@@ -90,7 +90,7 @@ namespace GunBond_Client.GameStates
 
         public GameStart(IGameStateService gameStateService, IGuiService guiService,
                         IInputService inputService, GraphicsDeviceManager graphics, 
-                        ContentManager content)
+                        ContentManager content, List<Peer> teamA, List<Peer> teamB)
         {
             this.gameStateService = gameStateService;
             this.guiService = guiService;
@@ -103,9 +103,9 @@ namespace GunBond_Client.GameStates
             gameStartScreen = new Screen(680, 680);
 
             spriteBatch = new SpriteBatch(graphics.GraphicsDevice);
-            
-            teamA = new List<Peer>();
-            teamB = new List<Peer>();
+
+            this.teamA = teamA;
+            this.teamB = teamB;
             idxA = 0;
             idxB = 0;
 
@@ -196,6 +196,7 @@ namespace GunBond_Client.GameStates
             FlattenTerrainBelowPlayers();
             CreateForeground();
 
+            currentPlayer = teamA[0];
             rocketColorArray = TextureTo2DArray(rocketTexture);
             carriageColorArray = TextureTo2DArray(currentPlayer.CarriageTexture);
             cannonColorArray = TextureTo2DArray(cannonTexture);
@@ -408,8 +409,10 @@ namespace GunBond_Client.GameStates
 
             //// TODO: Add your update logic here
             clock++;
-            ProcessKeyboard();
-            //SendMsgDummy();
+            if (currentPlayer.PeerId == Game1.main_console.PeerId)
+            {
+                ProcessKeyboard();
+            }
             if (rocketFlying)
             {
                 UpdateRocket();

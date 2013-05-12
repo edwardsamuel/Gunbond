@@ -598,12 +598,6 @@ namespace Gunbond_Client
 
                     lock (nextPeerPaddle)
                     {
-                        if (nextPeerSocket == null)
-                        {
-                            Thread.Sleep(Configuration.MaxTimeout / 2);
-                            continue;
-                        }
-
                         Message mes = Message.CreateMessageKeepAlive(PeerId);
                         nextPeerSocket.Send(mes.data, 0, mes.data.Length, SocketFlags.None);
                         nextPeerSocket.Receive(buffer, 0, buffer.Length, SocketFlags.None);
@@ -863,13 +857,15 @@ namespace Gunbond_Client
                         Room = room;
                         #endregion
                     }
-
                     else if (requestType == Message.MessageType.Start)
                     {
                         #region Start
                         int peerId;
                         string roomId;
-                        request.GetStart(out peerId, out roomId);
+                        List<int> teamA;
+                        List<int> teamB;
+
+                        request.GetStart(out peerId, out roomId, out teamA, out teamB);
 
                         if (PeerId != peerId)
                         {
@@ -985,7 +981,7 @@ namespace Gunbond_Client
                         }
                         Room.Members.Remove(peer);
                     }
-                    else
+                    else if (requestType == Message.MessageType.InGame)
                     {
                         if (GameEvent != null)
                         {
@@ -1064,18 +1060,30 @@ namespace Gunbond_Client
         }
         #endregion
 
-        public void SEND_START(string str)
-        {
-            Message m = Message.CreateMessageStart(PeerId, str);
-            lock (nextPeerPaddle)
-            {
-                nextPeerSocket.Send(m.data, 0, m.data.Length, SocketFlags.None);
-            }
-        }
-
         public void StartGame()
         {
-            Message m = Message.CreateMessageStart(PeerId, Room.RoomId);
+           List<int> teamA = new List<int>();
+           List<int> teamB = new List<int>();
+           Random randomizer = new Random();
+
+            while (teamA.Count < Room.Members.Count / 2)
+            {
+                Peer p = Room.Members[randomizer.Next(0, Room.Members.Count)];
+                if (teamA.FindIndex(fpeer => fpeer == p.PeerId) == -1)
+                {
+                    teamA.Add(p.PeerId);
+                }
+            }
+
+            foreach (Peer p in Room.Members)
+            {
+                if (teamA.FindIndex(fpeer => fpeer == p.PeerId) == -1)
+                {
+                    teamB.Add(p.PeerId);
+                }
+            }
+            Message m = Message.CreateMessageStart(PeerId, Room.RoomId, teamA, teamB);
+
             lock (nextPeerPaddle)
             {
                 nextPeerSocket.Send(m.data, 0, m.data.Length, SocketFlags.None);

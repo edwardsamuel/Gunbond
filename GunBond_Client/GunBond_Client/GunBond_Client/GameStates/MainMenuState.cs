@@ -19,6 +19,7 @@ using Nuclex.UserInterface;
 using Nuclex.UserInterface.Controls;
 using Nuclex.Input;
 using Nuclex.Input.Devices;
+using Gunbond_Client;
 
 namespace GunBond_Client.GameStates
 {

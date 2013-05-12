@@ -324,9 +324,15 @@ namespace Gunbond
             return new Message(data);
         }
 
-        public static Message CreateMessageStart(int peerID, String roomID)
+        public static Message CreateMessageStart(int peerID, String roomID, List<int> TeamA, List<int>TeamB)
         {
-            byte[] data = new byte[74];
+            int i = 71;
+            byte[] data = new byte[114];
+            // data [0..18] Header
+            // data [19] Message type
+            // data [20..23] PeerID
+            // data [24..73] roomID
+            // data [74..105] TeamA dan TeamB
             FillHeader(data);
             data[19] = 252;
 
@@ -336,6 +342,33 @@ namespace Gunbond
             byte[] bRoomId = ConvertStringToBytes(roomID, 50);
             Buffer.BlockCopy(bRoomId, 0, data, 24, 50);
 
+
+            // berisi 8 int urutan players
+            foreach (var x in TeamA)
+            {
+                byte[] player = ConvertIntToBytes(x);
+                Buffer.BlockCopy(player, 0, data, i + 4, 4);
+                i = i + 4;
+            }
+            
+            // diberikan penanda bernilai int -1
+            data[i++] = 0xff;
+            data[i++] = 0xff;
+            data[i++] = 0xff;
+            data[i++] = 0xff;
+
+            foreach (var x in TeamB)
+            {
+                byte[] player = ConvertIntToBytes(x);
+                Buffer.BlockCopy(player, 0, data, i + 4, 4);
+                i = i + 4;
+            }
+
+            // diberikan penanda bernilai int -1
+            data[i++] = 0xff;
+            data[i++] = 0xff;
+            data[i++] = 0xff;
+            data[i++] = 0xff;
             return new Message(data);
         }
 
@@ -633,7 +666,7 @@ namespace Gunbond
             roomId = ConvertBytesToString(bRoomId);
         }
 
-        public void GetStart(out int peerID, out String roomID)
+        public void GetStart(out int peerID, out String roomID, out List<int>TeamA, out List<int>TeamB)
         {
             byte[] d = new byte[4];
             d[0] = data[20];
@@ -649,6 +682,35 @@ namespace Gunbond
                 room[i] = data[j++];
             }
             roomID = ConvertBytesToString(room);
+
+            TeamA = new List<int>();
+            int p;
+            do
+            {
+                byte[] player = new byte[4];
+                Buffer.BlockCopy(data, j, player, 0, 4);
+                p = ConvertBytesToInt (player);
+                j += 4;
+
+                if (p > -1)
+                {
+                    TeamA.Add(p);
+                }
+            }while (p > -1);
+
+            TeamB = new List<int>();
+            do
+            {
+                byte[] player = new byte[4];
+                Buffer.BlockCopy(data, j, player, 0, 4);
+                p = ConvertBytesToInt(player);
+                j += 4;
+
+                if (p > -1)
+                {
+                    TeamB.Add(p);
+                }
+            } while (p > -1);
         }
 
         public void GetQuit(out int peerID)

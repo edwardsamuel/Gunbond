@@ -49,8 +49,12 @@ namespace GunBond_Client.GameStates
 
         public bool isStart = false;
 
+        List<Peer> teamA;
+        List<Peer> teamB;
+
+
         public RoomState(IGameState previousState, IGameStateService gameStateService, IGuiService guiService,
-                        IInputService inputService, GraphicsDeviceManager graphics, 
+                        IInputService inputService, GraphicsDeviceManager graphics,
                         ContentManager content)
         {
             this.gameStateService = gameStateService;
@@ -62,10 +66,13 @@ namespace GunBond_Client.GameStates
             this.previousState = previousState;
             this.mouseMove = new MouseMoveDelegate(mouseMoved);
 
+            this.teamA = new List<Peer>();
+            this.teamB = new List<Peer>();
+
             playerIDLabels = new List<LabelControl>();
             panelVisibility = new List<bool>();
             roomScreen = new Screen(1184, 682);
-           
+
             Game1.main_console.StartEvent += Start;
 
             spriteBatch = new SpriteBatch(graphics.GraphicsDevice);
@@ -77,7 +84,8 @@ namespace GunBond_Client.GameStates
         {
             if (isStart)
             {
-                DrawableGameState state = new GameStart(gameStateService, guiService, inputService, graphics, content);
+
+                DrawableGameState state = new GameStart(gameStateService, guiService, inputService, graphics, content, teamA, teamB);
                 gameStateService.Switch(state);
                 Game1.main_console.StartEvent -= Start;
             }
@@ -156,7 +164,7 @@ namespace GunBond_Client.GameStates
             graphics.PreferredBackBufferWidth = (int)guiService.Screen.Width;
             graphics.PreferredBackBufferHeight = (int)guiService.Screen.Height;
             graphics.ApplyChanges();
-            
+
             inputService.GetMouse().MouseMoved += mouseMove;
         }
 
@@ -238,7 +246,7 @@ namespace GunBond_Client.GameStates
                 panelVisibility.Add(false);
 
                 /*mainScreen.Desktop.Children.Add(playerIDLeftLabel);
-                mainScreen.Desktop.Children.Add(playerIDRightLabel);*/                
+                mainScreen.Desktop.Children.Add(playerIDRightLabel);*/
 
                 j++;
             }
@@ -311,7 +319,7 @@ namespace GunBond_Client.GameStates
         {
             Game1.main_console.StartGame();
 
-            DrawableGameState state = new GameStart(gameStateService, guiService, inputService, graphics, content);
+            DrawableGameState state = new GameStart(gameStateService, guiService, inputService, graphics, content, teamA, teamB);
             gameStateService.Switch(state);
             Game1.main_console.StartEvent -= Start;
         }
@@ -397,6 +405,23 @@ namespace GunBond_Client.GameStates
         private void Start(Message m)
         {
             isStart = true;
+
+            int peerId; 
+            String roomId;
+            List<int> teamA;
+            List<int> teamB;
+
+            m.GetStart(out peerId, out roomId, out teamA, out teamB);
+
+            foreach (var x in teamA)
+            {
+                this.teamA.Add(Game1.main_console.Room.Members.Find(f => f.PeerId == x));
+            }
+
+            foreach (var x in teamB)
+            {
+                this.teamB.Add(Game1.main_console.Room.Members.Find(f => f.PeerId == x));
+            }
         }
     }
 }

@@ -1070,7 +1070,7 @@ namespace Gunbond_Client
         }
         #endregion
 
-        public void StartGame()
+        public Message StartGame()
         {
            List<int> teamA = new List<int>();
            List<int> teamB = new List<int>();
@@ -1098,11 +1098,12 @@ namespace Gunbond_Client
             {
                 nextPeerSocket.Send(m.data, 0, m.data.Length, SocketFlags.None);
             }
+            return m;
         }
 
-        public Message SendGame(float x, float y, float angle, float power, float damage, bool isRocketFlying, int peerId)
+        public Message SendGame(float x, float y, float angle, float power, float life, bool isRocketFlying, int peerId)
         {
-            Message m = Message.CreateMessageGame(x, y, angle, power, damage, isRocketFlying, peerId);
+            Message m = Message.CreateMessageGame(x, y, angle, power, life, isRocketFlying, peerId);
             nextPeerSocket.Send(m.data, 0, m.data.Length, SocketFlags.None);
             return m;
         }

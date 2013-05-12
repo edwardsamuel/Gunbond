@@ -108,23 +108,6 @@ namespace GunBond_Client.GameStates
             this.teamB = teamB;
             idxA = 0;
             idxB = 0;
-
-            while (teamA.Count < numberOfPlayers / 2)
-            {
-                Peer p = Game1.main_console.Room.Members[randomizer.Next(0, numberOfPlayers)];
-                if (teamA.FindIndex(fpeer => fpeer == p) == -1)
-                {
-                    teamA.Add(p);
-                }
-            }
-
-            foreach (Peer p in Game1.main_console.Room.Members)
-            {
-                if (teamA.FindIndex(fpeer => fpeer == p) == -1)
-                {
-                    teamB.Add(p);
-                }
-            }
             
             LoadContent();
         }
@@ -230,7 +213,7 @@ namespace GunBond_Client.GameStates
                 height += peakheight / rand2 * Math.Sin((float)x / flatness * rand2 + rand2);
                 height += peakheight / rand3 * Math.Sin((float)x / flatness * rand3 + rand3);
                 height += offset;
-                terrainContour[x] = (int)height;
+                terrainContour[x] = 250; //(int)height;
             }
         }
 
@@ -462,39 +445,52 @@ namespace GunBond_Client.GameStates
             float yPos; // y position
             float power; // power
             float angle; // angle
-            float damage; // damage
+            float life; // damage
 
             bool isRocketFlying;
             int PeerID;
-            msg.GetMessageGame(out xPos, out yPos, out angle, out power, out damage, out isRocketFlying, out PeerID);
+            msg.GetMessageGame(out xPos, out yPos, out angle, out power, out life, out isRocketFlying, out PeerID);
 
             currentPlayer.Position.X = xPos;
             currentPlayer.Position.Y = yPos;
             currentPlayer.Power = power;
             currentPlayer.Angle = angle;
             rocketFlying = isRocketFlying;
-            rocketDamage = damage;
+            //rocketDamage = damage;
+            currentPlayer.Health = life;
 
-            System.Diagnostics.Debug.WriteLine("-----------------");
-            System.Diagnostics.Debug.WriteLine("players" + currentPlayer + PeerID);
-            System.Diagnostics.Debug.WriteLine(currentPlayer.Position.X);
-            System.Diagnostics.Debug.WriteLine(currentPlayer.Position.Y);
-            System.Diagnostics.Debug.WriteLine(currentPlayer.Power);
-            System.Diagnostics.Debug.WriteLine(currentPlayer.Angle);
-            System.Diagnostics.Debug.WriteLine("Rocket status:" + isRocketFlying);
-            System.Diagnostics.Debug.WriteLine(rocketDamage);
-            System.Diagnostics.Debug.WriteLine("-----------------");
+            if (isRocketFlying)
+            {
+                rocketPosition = currentPlayer.Position;
+                rocketPosition.X += 20;
+                rocketPosition.Y -= 10;
+                rocketAngle = currentPlayer.Angle;
+                Vector2 up = new Vector2(0, -1);
+                Matrix rotMatrix = Matrix.CreateRotationZ(rocketAngle);
+                rocketDirection = Vector2.Transform(up, rotMatrix);
+                rocketDirection *= currentPlayer.Power / 50.0f;
+            }            
+
+            Logger.WriteLine("-----------------");
+            Logger.WriteLine("players" + currentPlayer + PeerID);
+            Logger.WriteLine(currentPlayer.Position.X);
+            Logger.WriteLine(currentPlayer.Position.Y);
+            Logger.WriteLine(currentPlayer.Power);
+            Logger.WriteLine(currentPlayer.Angle);
+            Logger.WriteLine("Rocket status:" + isRocketFlying);
+            Logger.WriteLine(currentPlayer.Health);
+            Logger.WriteLine("-----------------");
         }
 
-		private void SendMsgDefault()
+		private void SendMsgDefault(bool isFlying)
         {
             ProcessMessages(Game1.main_console.SendGame(
                 currentPlayer.Position.X,
                 currentPlayer.Position.Y,
                 currentPlayer.Angle,
                 currentPlayer.Power,
-                rocketDamage,
-                false,
+                currentPlayer.Health,
+                isFlying,
                 currentPlayer.PeerId));
         }
 
@@ -528,8 +524,12 @@ namespace GunBond_Client.GameStates
                 {
                     idxB = (idxB + 1) % teamB.Count;
                     currentPlayer = teamB[idxB];
+                    if (currentPlayer.IsAlive)
+                    {
+                        break;
+                    } 
                 }
-                while (currentPlayer.IsAlive);
+                while (!currentPlayer.IsAlive);
             }
             else if (teamB.FindIndex(fpeer => fpeer == currentPlayer) >= 0)
             {
@@ -537,8 +537,12 @@ namespace GunBond_Client.GameStates
                 {
                     idxA = (idxA + 1) % teamA.Count;
                     currentPlayer = teamA[idxA];
+                    if (currentPlayer.IsAlive)
+                    {
+                        break;
+                    } 
                 }
-                while (currentPlayer.IsAlive);
+                while (!currentPlayer.IsAlive);
             }
 
         }
@@ -655,13 +659,13 @@ namespace GunBond_Client.GameStates
             if (keybState.IsKeyDown(Keys.Q))
             {
                 currentPlayer.Power -= 1f;
-                SendMsgDefault();
+                SendMsgDefault(false);
             }
 
             if (keybState.IsKeyDown(Keys.W))
             {
                 currentPlayer.Power += 1f;
-                SendMsgDefault();
+                SendMsgDefault(false);
             }
             // menaikkan angle dengan up arrow
             // mennurunkan angle dengan down arrow
@@ -673,7 +677,7 @@ namespace GunBond_Client.GameStates
                 if (currentPlayer.Angle < -MathHelper.PiOver2)
                     currentPlayer.Angle = MathHelper.PiOver2;
 
-                SendMsgDefault();
+                SendMsgDefault(false);
             }
 
             if (keybState.IsKeyDown(Keys.Up))
@@ -684,20 +688,20 @@ namespace GunBond_Client.GameStates
                 if (currentPlayer.Angle < -MathHelper.PiOver2)
                     currentPlayer.Angle = MathHelper.PiOver2;
 
-                SendMsgDefault();
+                SendMsgDefault(false);
             }
             // menggerakkan karakter ke kiri dan kanan dengan left-right arrow
             if (keybState.IsKeyDown(Keys.Left))
             {
                 currentPlayer.Position.X -= 1f;
 
-                SendMsgDefault();
+                SendMsgDefault(false);
             }
             if (keybState.IsKeyDown(Keys.Right))
             {
                 currentPlayer.Position.X += 1f;
 
-                SendMsgDefault();
+                SendMsgDefault(false);
             }
 
             if (keybState.IsKeyDown(Keys.PageDown))
@@ -707,7 +711,7 @@ namespace GunBond_Client.GameStates
                     currentPlayer.Power = 500;
                 if (currentPlayer.Power < 0)
                     currentPlayer.Power = 0;
-                SendMsgDefault();
+                SendMsgDefault(false);
             }
             if (keybState.IsKeyDown(Keys.PageUp))
             {
@@ -717,33 +721,16 @@ namespace GunBond_Client.GameStates
                 if (currentPlayer.Power < 0)
                     currentPlayer.Power = 0;
 
-                SendMsgDefault();
+                SendMsgDefault(false);
             }
             
             if (keybState.IsKeyDown(Keys.Enter) || keybState.IsKeyDown(Keys.Space))
-            {
-
-                Message m = Message.CreateMessageGame(
-                   currentPlayer.Position.X,
-                   currentPlayer.Position.Y,
-                   currentPlayer.Angle,
-                   currentPlayer.Power,
-                   rocketDamage,
-                   true,
-                   currentPlayer.PeerId);
-                ProcessMessages(m);
+            {                
                 if (rocketFlying != true)
                 {
                     rocketFlying = true;
-                }
-                rocketPosition = currentPlayer.Position;
-                rocketPosition.X += 20;
-                rocketPosition.Y -= 10;
-                rocketAngle = currentPlayer.Angle;
-                Vector2 up = new Vector2(0, -1);
-                Matrix rotMatrix = Matrix.CreateRotationZ(rocketAngle);
-                rocketDirection = Vector2.Transform(up, rotMatrix);
-                rocketDirection *= currentPlayer.Power / 50.0f;
+                    SendMsgDefault(rocketFlying);
+                }                
             }
         }        
     }

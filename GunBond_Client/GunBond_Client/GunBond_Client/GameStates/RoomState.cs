@@ -317,7 +317,7 @@ namespace GunBond_Client.GameStates
 
         private void startGamePressed(Object obj, EventArgs args)
         {
-            Game1.main_console.StartGame();
+            Start(Game1.main_console.StartGame());
 
             DrawableGameState state = new GameStart(gameStateService, guiService, inputService, graphics, content, teamA, teamB);
             gameStateService.Switch(state);

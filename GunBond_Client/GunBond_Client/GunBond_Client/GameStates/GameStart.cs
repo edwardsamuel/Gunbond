@@ -214,7 +214,7 @@ namespace GunBond_Client.GameStates
                 height += peakheight / rand2 * Math.Sin((float)x / flatness * rand2 + rand2);
                 height += peakheight / rand3 * Math.Sin((float)x / flatness * rand3 + rand3);
                 height += offset;
-                terrainContour[x] = 250; //(int)height;
+                terrainContour[x] = 300; //(int)height;
             }
         }
 

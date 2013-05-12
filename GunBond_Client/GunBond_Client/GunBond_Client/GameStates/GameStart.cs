@@ -20,6 +20,7 @@ using Nuclex.UserInterface.Controls;
 using Nuclex.Input;
 using Nuclex.Input.Devices;
 using Gunbond;
+using Gunbond_Client.Util;
 
 namespace GunBond_Client.GameStates
 {
@@ -36,8 +37,6 @@ namespace GunBond_Client.GameStates
 
     class GameStart : DrawableGameState
     {        
-        
-
         private IGameStateService gameStateService;
         private IGuiService guiService;
         private IInputService inputService;
@@ -67,7 +66,7 @@ namespace GunBond_Client.GameStates
         SpriteFont font;
 
         PlayerData[] players;   
-        int numberOfPlayers = 6;
+        int numberOfPlayers;
         int numberOfPlayerAlive;
         // array of carriageTexture
         Texture2D[] carriageTexture = new Texture2D[8];
@@ -94,7 +93,7 @@ namespace GunBond_Client.GameStates
 
         public GameStart(IGameStateService gameStateService, IGuiService guiService,
                         IInputService inputService, GraphicsDeviceManager graphics, 
-                        ContentManager content)
+                        ContentManager content, int nPlayer)
         {
             this.gameStateService = gameStateService;
             this.guiService = guiService;
@@ -103,6 +102,7 @@ namespace GunBond_Client.GameStates
             this.Content = content;
             this.previousState = gameStateService.ActiveState;
 
+            this.numberOfPlayers = nPlayer;
             gameStartScreen = new Screen(680, 680);
 
             spriteBatch = new SpriteBatch(graphics.GraphicsDevice);            
@@ -435,6 +435,7 @@ namespace GunBond_Client.GameStates
 
 		private void ProcessMessages(Message msg)
         {
+            Logger.WriteLine("MAAAAAAAAASSSSSSSSSUU");
             float xPos; // x position
             float yPos; // y position
             float power; // power
@@ -457,22 +458,24 @@ namespace GunBond_Client.GameStates
             System.Diagnostics.Debug.WriteLine(players[currentPlayer].Position.Y);
             System.Diagnostics.Debug.WriteLine(players[currentPlayer].Power);
             System.Diagnostics.Debug.WriteLine(players[currentPlayer].Angle);
+            System.Diagnostics.Debug.WriteLine("Rocket status:" + isRocketFlying);
             System.Diagnostics.Debug.WriteLine(rocketDamage);
             System.Diagnostics.Debug.WriteLine("-----------------");
         }
 
-		        private void SendMsgDefault()
+		private void SendMsgDefault()
         {
             Message m = Message.CreateMessageGame(
-                    players[currentPlayer].Position.X,
-                    players[currentPlayer].Position.Y,
-                    players[currentPlayer].Angle,
-                    players[currentPlayer].Power,
-                    rocketDamage,
-                    false,
-                    currentPlayer);
+                players[currentPlayer].Position.X,
+                players[currentPlayer].Position.Y,
+                players[currentPlayer].Angle,
+                players[currentPlayer].Power,
+                rocketDamage,
+                false,
+                currentPlayer);
             ProcessMessages(m);
         }
+
         private void UpdateRocket()
         {
             if (rocketFlying)
@@ -603,6 +606,7 @@ namespace GunBond_Client.GameStates
 
         private void ProcessKeyboard()
         {
+            //SendMsgDefault();
             KeyboardState keybState = Keyboard.GetState();
 
             //float tempPosX = players[currentPlayer].Position.X;
@@ -710,5 +714,7 @@ namespace GunBond_Client.GameStates
         }
 
         public int PeerID { get; set; }
+
+        
     }
 }

@@ -411,7 +411,7 @@ namespace Gunbond_Tracker
                         if (peers.TryGetValue(peerId, out peer) && !peer.InRoom)
                         {
                             Room room;
-                            if (rooms.TryGetValue(roomId, out room) && room.Members.Count + 1 < room.MaxPlayers)
+                            if (rooms.TryGetValue(roomId, out room) && room.Members.Count < room.MaxPlayers)
                             {
                                 Logger.WriteLine("Join room request is sent by Peer " + peer + " for Room " + room);
 

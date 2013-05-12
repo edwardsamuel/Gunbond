@@ -177,9 +177,10 @@ namespace Gunbond_Client
 
         #endregion
 
-
         public delegate void GameHandler(Message m);
         public event GameHandler GameEvent;
+        public event GameHandler StartEvent;
+
 
         public GunConsole(string fileName)
         {
@@ -203,6 +204,7 @@ namespace Gunbond_Client
 
         public bool ConnectTracker()
         {
+            IPEndPoint ipEndPointListener = null;
             try
             {
                 if (!IsConnected)
@@ -247,10 +249,13 @@ namespace Gunbond_Client
                             Logger.WriteLine("Connection to tracker is successfully established. PeerID: " + PeerId);
 
                             IPAddress ipAddr = (trackerSocket.LocalEndPoint as IPEndPoint).Address;
-                            IPEndPoint ipEndPointListener = new IPEndPoint(ipAddr, Configuration.ListenPort);
+                            ipEndPointListener = new IPEndPoint(ipAddr, Configuration.ListenPort);
                             SocketPermission permissionListener = new SocketPermission(NetworkAccess.Accept, TransportType.Tcp, "", Configuration.ListenPort);
 
                             listenerSocket = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+
+
+                            Logger.WriteLine("---- " + ipEndPointListener);
                             listenerSocket.Bind(ipEndPointListener);
 
                             permission.Demand();
@@ -498,7 +503,7 @@ namespace Gunbond_Client
             }
         }
 
-        public void Quit()
+        public bool Quit()
         {
             try
             {
@@ -522,16 +527,20 @@ namespace Gunbond_Client
                         nextPeerSocket.Close();
                         nextPeerSocket = null;
                         listenerSocket.Disconnect(true);
+                        return true;
                     }
                     else
                     {
                         Logger.WriteLine("Quit is prohibited");
+                        return false;
                     }
                 }
+                return false;
             }
             catch (Exception exc)
             {
                 Console.WriteLine(exc.ToString());
+                return false;
             }
         }
 
@@ -854,6 +863,26 @@ namespace Gunbond_Client
                         Room = room;
                         #endregion
                     }
+
+                    else if (requestType == Message.MessageType.Start)
+                    {
+                        #region Start
+                        int peerId;
+                        string roomId;
+                        request.GetStart(out peerId, out roomId);
+
+                        if (PeerId != peerId)
+                        {
+                            if (StartEvent != null)
+                            {
+                                StartEvent(request);
+                            }
+
+                            response = request;
+                            nextPeerSocket.Send(response.data, 0, response.data.Length, SocketFlags.None);
+                        }
+                        #endregion
+                    }
                     else if (requestType == Message.MessageType.Quit)
                     {
                         int peerId;
@@ -1038,6 +1067,15 @@ namespace Gunbond_Client
         public void SEND_START(string str)
         {
             Message m = Message.CreateMessageStart(PeerId, str);
+            lock (nextPeerPaddle)
+            {
+                nextPeerSocket.Send(m.data, 0, m.data.Length, SocketFlags.None);
+            }
+        }
+
+        public void StartGame()
+        {
+            Message m = Message.CreateMessageStart(PeerId, Room.RoomId);
             lock (nextPeerPaddle)
             {
                 nextPeerSocket.Send(m.data, 0, m.data.Length, SocketFlags.None);

@@ -19,7 +19,8 @@ using Nuclex.UserInterface.Controls;
 using Nuclex.Input;
 using Nuclex.Input.Devices;
 
-using GunBond_Client.Model;
+using Gunbond_Client.Model;
+using Gunbond;
 
 namespace GunBond_Client.GameStates
 {
@@ -50,11 +51,14 @@ namespace GunBond_Client.GameStates
         private List<EventHandler> joinEventHandlers;
 
         private MouseMoveDelegate mouseMove;
+        List<Message.MessageRoomBody> allRoom;
 
         public LobbyState(IGameStateService gameStateService, IGuiService guiService,
                         IInputService inputService, GraphicsDeviceManager graphics, 
                         ContentManager content, String username)
         {
+            allRoom = Game1.main_console.ListRooms();
+            
             this.gameStateService = gameStateService;
             this.guiService = guiService;
             this.inputService = inputService;
@@ -171,6 +175,7 @@ namespace GunBond_Client.GameStates
 
         private void Refresh()
         {
+            allRoom = Game1.main_console.ListRooms();
             for (int x = 0; x < 10; ++x)
             {
                 lobbyScreen.Desktop.Children.Remove(roomIDLabels[x]);
@@ -180,23 +185,38 @@ namespace GunBond_Client.GameStates
                 panelVisibility[x] = false;
             }
 
-            Game1.main_console.list();
-            List<Room> rooms = Game1.main_console.ROOMS;
+
             int i = page * 10;
-            while ((i < (page + 1) * 10) && (i < rooms.Count))
+            while ((i < (page + 1) * 10) && (i < allRoom.Count))
             {
                 panelVisibility[i] = true;
-                roomIDLabels[i].Text = "Room :" + rooms[i].ToLanguageString();
-                roomCapLabels[i].Text = "" + rooms[i].CURRENT_PLAYER + " / " + rooms[i].MAX_PLAYER;
+                roomIDLabels[i].Text = allRoom[i].roomId;
+                roomCapLabels[i].Text = "" + allRoom[i].currentPlayer + " / " + allRoom[i].maxPlayers;
 
                 lobbyScreen.Desktop.Children.Add(roomIDLabels[i]);
                 lobbyScreen.Desktop.Children.Add(roomCapLabels[i]);
                 lobbyScreen.Desktop.Children.Add(joinButtons[i]);
 
                 joinButtons[i].Pressed += joinEventHandlers[i];
-
                 i++;
             }
+
+            
+            
+            //while ((i < (page + 1) * 10) && (i < rooms.Count))
+            //{
+            //    panelVisibility[i] = true;
+            //    roomIDLabels[i].Text = "Room :" + rooms[i].ToLanguageString();
+            //    roomCapLabels[i].Text = "" + rooms[i].CURRENT_PLAYER + " / " + rooms[i].MAX_PLAYER;
+
+            //    lobbyScreen.Desktop.Children.Add(roomIDLabels[i]);
+            //    lobbyScreen.Desktop.Children.Add(roomCapLabels[i]);
+            //    lobbyScreen.Desktop.Children.Add(joinButtons[i]);
+
+            //    joinButtons[i].Pressed += joinEventHandlers[i];
+
+            //    i++;
+            //}
         }
 
         private void LoadContent(Screen mainScreen, ContentManager content)
@@ -387,7 +407,7 @@ namespace GunBond_Client.GameStates
             }
             --i;
 
-            if (Game1.main_console.join(i))
+            if (Game1.main_console.JoinRoom(roomIDLabels[i].Text))
             {
                 gameStateService.Switch(new RoomState(this, gameStateService, guiService, inputService, graphics, content));
             }
@@ -409,12 +429,12 @@ namespace GunBond_Client.GameStates
 
         private void leftPagePressed(Object obj, EventArgs args)
         {
-            Game1.main_console.list();
+            List<Message.MessageRoomBody> allRoom = Game1.main_console.ListRooms();
             if (page > 0)
             {
                 page --;
             }
-            if ((page-1) * 10 > Game1.main_console.ROOMS.Count)
+            if ((page - 1) * 10 > allRoom.Count)
             {
                 page = 0;
             }
@@ -423,8 +443,8 @@ namespace GunBond_Client.GameStates
 
         private void rightPagePressed(Object obj, EventArgs args)
         {
-            Game1.main_console.list();
-            if (page < (int)(Game1.main_console.ROOMS.Count/10))
+            Game1.main_console.ListRooms();
+            if (page < (int)(Game1.main_console.Room.Members.Count/10))
             {
                 page++;
             }

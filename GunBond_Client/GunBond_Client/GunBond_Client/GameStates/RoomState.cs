@@ -21,7 +21,8 @@ using Nuclex.UserInterface.Controls;
 using Nuclex.Input;
 using Nuclex.Input.Devices;
 
-using GunBond_Client.Model;
+using Gunbond_Client.Model;
+using Gunbond;
 
 namespace GunBond_Client.GameStates
 {
@@ -46,6 +47,8 @@ namespace GunBond_Client.GameStates
         private List<LabelControl> playerIDLabels;
         private List<bool> panelVisibility;
 
+        public bool isStart = false;
+
         public RoomState(IGameState previousState, IGameStateService gameStateService, IGuiService guiService,
                         IInputService inputService, GraphicsDeviceManager graphics, 
                         ContentManager content)
@@ -62,10 +65,8 @@ namespace GunBond_Client.GameStates
             playerIDLabels = new List<LabelControl>();
             panelVisibility = new List<bool>();
             roomScreen = new Screen(1184, 682);
-            /*mainMenuScreen.Desktop.Bounds = new UniRectangle(
-              new UniScalar(0.1f, 0.0f), new UniScalar(0.1f, 0.0f), // x and y = 10%
-              new UniScalar(0.8f, 0.0f), new UniScalar(0.8f, 0.0f) // width and height = 80%
-            );*/
+           
+            Game1.main_console.StartEvent += Start;
 
             spriteBatch = new SpriteBatch(graphics.GraphicsDevice);
 
@@ -74,32 +75,25 @@ namespace GunBond_Client.GameStates
 
         public override void Update(Microsoft.Xna.Framework.GameTime gameTime)
         {
+            if (isStart)
+            {
+                DrawableGameState state = new GameStart(gameStateService, guiService, inputService, graphics, content, Game1.main_console.Room.Members.Count);
+                gameStateService.Switch(state);
+                Game1.main_console.StartEvent -= Start;
+            }
+
             for (int x = 0; x < 8; ++x)
             {
                 roomScreen.Desktop.Children.Remove(playerIDLabels[x]);
                 panelVisibility[x] = false;
             }
-
-            Game1.main_console.list();
-            List<Peer> peers = Game1.main_console.PEERS;
-            panelVisibility[0] = true;
-
-            StringBuilder sb = new StringBuilder();
-            for (int x = 0; x < Game1.main_console.PEERS_ID.Length; ++x)
-            {
-                sb.Append(Game1.main_console.PEERS_ID[x] + ".");
-            }
-            sb.Remove(sb.Length - 1, 1);
-            playerIDLabels[0].Text = sb.ToString();
-            roomScreen.Desktop.Children.Add(playerIDLabels[0]);
-
+            
             int i = 0;
-            while (i < peers.Count)
+            while (i < Game1.main_console.Room.Members.Count)
             {
-                panelVisibility[i + 1] = true;
-                playerIDLabels[i + 1].Text = peers[i].ToString();
-                roomScreen.Desktop.Children.Add(playerIDLabels[i + 1]);
-
+                panelVisibility[i] = true;
+                playerIDLabels[i].Text = Game1.main_console.Room.Members[i].PeerId.ToString();
+                roomScreen.Desktop.Children.Add(playerIDLabels[i]);
                 i++;
             }
         }
@@ -315,13 +309,16 @@ namespace GunBond_Client.GameStates
 
         private void startGamePressed(Object obj, EventArgs args)
         {
-            DrawableGameState state = new GameStart(gameStateService, guiService, inputService, graphics, content);
+            Game1.main_console.StartGame();
+
+            DrawableGameState state = new GameStart(gameStateService, guiService, inputService, graphics, content, Game1.main_console.Room.Members.Count);
             gameStateService.Switch(state);
+            Game1.main_console.StartEvent -= Start;
         }
 
         private void backPressed(Object obj, EventArgs args)
         {
-            if (Game1.main_console.quit())
+            if (Game1.main_console.Quit())
             {
                 gameStateService.Switch(previousState);
             }
@@ -395,6 +392,11 @@ namespace GunBond_Client.GameStates
                     Game1.cursorTrigger = true;
                 }
             }
+        }
+
+        private void Start(Message m)
+        {
+            isStart = true;
         }
     }
 }

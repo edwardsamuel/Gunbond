@@ -588,43 +588,43 @@ namespace Gunbond_Client
 
         private void SendAliveNextPeer()
         {
-            try
-            {
-                while (true)
-                {
-                    Logger.WriteLine("SendAliveNextPeer");
-                    byte[] buffer = new byte[1024];
+            //try
+            //{
+            //    while (true)
+            //    {
+            //        Logger.WriteLine("SendAliveNextPeer");
+            //        byte[] buffer = new byte[1024];
 
-                    lock (nextPeerPaddle)
-                    {
-                        Message mes = Message.CreateMessageKeepAlive(PeerId);
-                        nextPeerSocket.Send(mes.data, 0, mes.data.Length, SocketFlags.None);
-                        nextPeerSocket.Receive(buffer, 0, buffer.Length, SocketFlags.None);
-                    }
+            //        lock (nextPeerPaddle)
+            //        {
+            //            Message mes = Message.CreateMessageKeepAlive(PeerId);
+            //            nextPeerSocket.Send(mes.data, 0, mes.data.Length, SocketFlags.None);
+            //            nextPeerSocket.Receive(buffer, 0, buffer.Length, SocketFlags.None);
+            //        }
 
-                    Message response = new Message(buffer);
-                    if (response.GetMessageType() == Message.MessageType.KeepAlive)
-                    {
-                        Logger.WriteLine("KeepAlive to next peer success.");
-                        Thread.Sleep(Configuration.MaxTimeout / 2);
-                    }
-                    else
-                    {
-                        Logger.WriteLine("Message KeepAlive reply from next peer has not been received.");
-                        lock (nextPeerPaddle)
-                        {
-                            Logger.WriteLine("Closing connection " + (nextPeerSocket.RemoteEndPoint as IPEndPoint).Address + ":" + (nextPeerSocket.RemoteEndPoint as IPEndPoint).Port);
-                            nextPeerSocket.Close();
-                        }
-                        break;
-                    }
-                    Logger.WriteLine();
-                }
-            }
-            catch (Exception e)
-            {
-                Logger.WriteLine(e.Message);
-            }
+            //        Message response = new Message(buffer);
+            //        if (response.GetMessageType() == Message.MessageType.KeepAlive)
+            //        {
+            //            Logger.WriteLine("KeepAlive to next peer success.");
+            //            Thread.Sleep(Configuration.MaxTimeout / 2);
+            //        }
+            //        else
+            //        {
+            //            Logger.WriteLine("Message KeepAlive reply from next peer has not been received.");
+            //            lock (nextPeerPaddle)
+            //            {
+            //                Logger.WriteLine("Closing connection " + (nextPeerSocket.RemoteEndPoint as IPEndPoint).Address + ":" + (nextPeerSocket.RemoteEndPoint as IPEndPoint).Port);
+            //                nextPeerSocket.Close();
+            //            }
+            //            break;
+            //        }
+            //        Logger.WriteLine();
+            //    }
+            //}
+            //catch (Exception e)
+            //{
+            //    Logger.WriteLine(e.Message);
+            //}
         }
         #endregion
 

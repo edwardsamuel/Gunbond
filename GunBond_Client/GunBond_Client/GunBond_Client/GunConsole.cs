@@ -701,16 +701,21 @@ namespace Gunbond_Client
                 object[] obj = new object[2];
                 obj = (object[])target.AsyncState;
 
-                byte[] buffer = (byte[]) obj[0];
-                handler = (Socket) obj[1];
+                byte[] buffer = (byte[])obj[0];
+                handler = (Socket)obj[1];
 
-                Logger.WriteLine("ReceiveCallback from " + (handler.RemoteEndPoint as IPEndPoint).Address + ":" + (handler.RemoteEndPoint as IPEndPoint).Port);
+                //Logger.WriteLine("ReceiveCallback from " + (handler.RemoteEndPoint as IPEndPoint).Address + ":" + (handler.RemoteEndPoint as IPEndPoint).Port);
+
+                Logger.WriteLine("Message from " + (handler.RemoteEndPoint as IPEndPoint).Address + ":" + (handler.RemoteEndPoint as IPEndPoint).Port);
 
                 bool quit = false;
 
                 int bytesRead = handler.EndReceive(target);
                 if (bytesRead > 0)
                 {
+                    Logger.WriteLine("Message to " + (handler.LocalEndPoint as IPEndPoint).Address + ":" + (handler.LocalEndPoint as IPEndPoint).Port);
+                    Logger.WriteLine("Message content: \n----------------------------\n" + buffer+"\n----------------------------");
+                   
                     Message request = new Message(buffer);
                     Message response;
 
@@ -726,8 +731,9 @@ namespace Gunbond_Client
                             request.GetHandshakePeerCreator(out newPeerId, out newPeerListenPort);
                             Room.Members.Add(new Peer(newPeerId, newPeerIp, newPeerListenPort));
 
-                            Logger.WriteLine("Peer ID : " + newPeerId);
-                            Logger.WriteLine("Peer IP : " + newPeerIp + ":" + newPeerListenPort);
+                            //Logger.WriteLine("Peer ID : " + newPeerId);
+                            //Logger.WriteLine("Peer IP : " + newPeerIp + ":" + newPeerListenPort);
+                            Logger.WriteLine("Handshake from:" + newPeerIp + "is sent to " + (handler.LocalEndPoint as IPEndPoint).Address);
 
                             // Send SUCCESS message
                             response = Message.CreateMessageSuccess();
@@ -805,7 +811,7 @@ namespace Gunbond_Client
                         Logger.WriteLine("NewMember");
                         if (IsCreator)
                         {
-                            Logger.WriteLine("NewMember has been received by peer creator");
+                            Logger.WriteLine("NEW MEMBER has been received by peer creator");
                             Logger.WriteLine("Closing connection from " + (handler.RemoteEndPoint as IPEndPoint).Address + ":" + (handler.RemoteEndPoint as IPEndPoint).Port);
                             handler.Close();
                             quit = true;
@@ -820,6 +826,8 @@ namespace Gunbond_Client
                             Room.Members.Add(new Peer(newPeerId, newPeerIp, newPeerListenPort));
 
                             Logger.WriteLine("Sending NEW MEMBER to nextPeerSocket: " + (nextPeerSocket.RemoteEndPoint as IPEndPoint).Address + ":" + (nextPeerSocket.RemoteEndPoint as IPEndPoint).Port);
+                            Logger.WriteLine("NEW MEMBER has been sent from: " + (nextPeerSocket.LocalEndPoint as IPEndPoint).Address + ":" + (nextPeerSocket.LocalEndPoint as IPEndPoint).Port);
+                            
                             response = request;
                             nextPeerSocket.Send(response.data, 0, response.data.Length, SocketFlags.None);
 
@@ -995,7 +1003,7 @@ namespace Gunbond_Client
                                 GameEvent(request);
                             }
                             response = request;
-                            nextPeerSocket.Send(response.data, 0, response.data.Length, SocketFlags.None);                            
+                            nextPeerSocket.Send(response.data, 0, response.data.Length, SocketFlags.None);
                         }
                     }
                 }
@@ -1072,9 +1080,9 @@ namespace Gunbond_Client
 
         public Message StartGame()
         {
-           List<int> teamA = new List<int>();
-           List<int> teamB = new List<int>();
-           Random randomizer = new Random();
+            List<int> teamA = new List<int>();
+            List<int> teamB = new List<int>();
+            Random randomizer = new Random();
 
             while (teamA.Count < Room.Members.Count / 2)
             {

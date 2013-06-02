@@ -20,24 +20,15 @@ using Nuclex.UserInterface.Controls;
 using Nuclex.Input;
 using Nuclex.Input.Devices;
 using Gunbond;
+using Gunbond_Client.Util;
+using Gunbond_Client.Model;
 
 namespace GunBond_Client.GameStates
 {
-    public struct PlayerData
-    {
-        public Vector2 Position;
-        public bool IsAlive;
-        public Color Color;
-        public float Angle;
-        public float Power;
-        public float Health;
-        public Texture2D carriageTexture;
-    }
+    
 
     class GameStart : DrawableGameState
     {        
-        
-
         private IGameStateService gameStateService;
         private IGuiService guiService;
         private IInputService inputService;
@@ -63,11 +54,11 @@ namespace GunBond_Client.GameStates
         int screenWidth = 680;
         int screenHeight = 680;
         float playerScaling;
-        int currentPlayer; 
+        Peer currentPlayer; 
         SpriteFont font;
+        TimeSpan clock;
 
-        PlayerData[] players;   
-        int numberOfPlayers = 6;
+        int numberOfPlayers;
         int numberOfPlayerAlive;
         // array of carriageTexture
         Texture2D[] carriageTexture = new Texture2D[8];
@@ -78,7 +69,7 @@ namespace GunBond_Client.GameStates
         Vector2 rocketDirection;
         float rocketAngle;
         float rocketScaling = 0.1f;
-        float rocketDamage;
+
         // smoke:
         List<Vector2> smokeList = new List<Vector2>();
         Random randomizer = new Random();
@@ -92,9 +83,14 @@ namespace GunBond_Client.GameStates
         Color[,] carriageColorArray;
         Color[,] cannonColorArray;
 
+        List<Peer> teamA;
+        List<Peer> teamB;
+        int idxA;
+        int idxB;
+
         public GameStart(IGameStateService gameStateService, IGuiService guiService,
                         IInputService inputService, GraphicsDeviceManager graphics, 
-                        ContentManager content)
+                        ContentManager content, List<Peer> teamA, List<Peer> teamB)
         {
             this.gameStateService = gameStateService;
             this.guiService = guiService;
@@ -103,9 +99,16 @@ namespace GunBond_Client.GameStates
             this.Content = content;
             this.previousState = gameStateService.ActiveState;
 
+            this.numberOfPlayers = Game1.main_console.Room.Members.Count();
             gameStartScreen = new Screen(680, 680);
 
-            spriteBatch = new SpriteBatch(graphics.GraphicsDevice);            
+            spriteBatch = new SpriteBatch(graphics.GraphicsDevice);
+            Game1.main_console.GameEvent += ProcessMessages;
+
+            this.teamA = teamA;
+            this.teamB = teamB;
+            idxA = 0;
+            idxB = 0;
             
             LoadContent();
         }
@@ -130,17 +133,11 @@ namespace GunBond_Client.GameStates
         private void SetUpPlayers()
         // initializes array of PlayerData objects
         {
-            players = new PlayerData[numberOfPlayers];
             for (int i = 0; i < numberOfPlayers; i++)
             {
-                players[i].IsAlive = true;
-                players[i].carriageTexture = carriageTexture[i];
-                players[i].Angle = MathHelper.ToRadians(90);
-                players[i].Power = 100;
-                players[i].Health = 500;
-                players[i].Position = new Vector2();
-                players[i].Position.X = screenWidth / (numberOfPlayers + 1) * (i + 1);
-                players[i].Position.Y = terrainContour[(int)players[i].Position.X];
+                Game1.main_console.Room.Members[i].CarriageTexture = carriageTexture[i];
+                Game1.main_console.Room.Members[i].Position.X = screenWidth / (numberOfPlayers + 1) * (i + 1);
+                Game1.main_console.Room.Members[i].Position.Y = terrainContour[(int)Game1.main_console.Room.Members[i].Position.X];
             }
             numberOfPlayerAlive = numberOfPlayers;
         }
@@ -183,15 +180,16 @@ namespace GunBond_Client.GameStates
             FlattenTerrainBelowPlayers();
             CreateForeground();
 
+            currentPlayer = teamA[0];
             rocketColorArray = TextureTo2DArray(rocketTexture);
-            carriageColorArray = TextureTo2DArray(players[0].carriageTexture);
+            carriageColorArray = TextureTo2DArray(currentPlayer.CarriageTexture);
             cannonColorArray = TextureTo2DArray(cannonTexture);
             // TODO: use this.Content to load your game content here
         }
 
         private void FlattenTerrainBelowPlayers()
         {
-            foreach (PlayerData player in players)
+            foreach (Peer player in Game1.main_console.Room.Members)
                 if (player.IsAlive)
                     for (int x = 0; x < 40; x++)
                         terrainContour[(int)player.Position.X + x] = terrainContour[(int)player.Position.X];
@@ -216,7 +214,7 @@ namespace GunBond_Client.GameStates
                 height += peakheight / rand2 * Math.Sin((float)x / flatness * rand2 + rand2);
                 height += peakheight / rand3 * Math.Sin((float)x / flatness * rand3 + rand3);
                 height += offset;
-                terrainContour[x] = (int)height;
+                terrainContour[x] = 300; //(int)height;
             }
         }
 
@@ -301,25 +299,24 @@ namespace GunBond_Client.GameStates
         private Vector2 CheckPlayersCollision()
         {
             Matrix rocketMat = Matrix.CreateTranslation(-42, -240, 0) * Matrix.CreateRotationZ(rocketAngle) * Matrix.CreateScale(rocketScaling) * Matrix.CreateTranslation(rocketPosition.X, rocketPosition.Y, 0);
-            for (int i = 0; i < numberOfPlayers; i++)
+            foreach (Peer player in Game1.main_console.Room.Members)
             {
-                PlayerData player = players[i];
                 if (player.IsAlive)
                 {
-                    if (i != currentPlayer)
+                    if (player != currentPlayer)
                     {
-                        int xPos = (int)player.Position.X;
-                        int yPos = (int)player.Position.Y;
+                        int xPos = (int) player.Position.X;
+                        int yPos = (int) player.Position.Y;
 
 
-                        Matrix carriageMat = Matrix.CreateTranslation(0, -player.carriageTexture.Height, 0) * Matrix.CreateScale(playerScaling) * Matrix.CreateTranslation(xPos, yPos, 0);
+                        Matrix carriageMat = Matrix.CreateTranslation(0, -player.CarriageTexture.Height, 0) * Matrix.CreateScale(playerScaling) * Matrix.CreateTranslation(xPos, yPos, 0);
                         Vector2 carriageCollisionPoint = TexturesCollide(carriageColorArray, carriageMat, rocketColorArray, rocketMat);
                         if (carriageCollisionPoint.X > -1)
                         {
-                            players[i].Health -= players[currentPlayer].Power / 3;
-                            if (players[i].Health <= 0)
+                            player.Health -= currentPlayer.Power / 3;
+                            if (player.Health <= 0)
                             {
-                                players[i].IsAlive = false;
+                                player.IsAlive = false;
                                 numberOfPlayerAlive -= 1;
                             }
                             return carriageCollisionPoint;
@@ -389,14 +386,22 @@ namespace GunBond_Client.GameStates
         /// </summary>
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         public override void Update(GameTime gameTime)
-        {
+        {            
             // Allows the game to exit
             //if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
             //    this.Exit();
 
             //// TODO: Add your update logic here
-            ProcessKeyboard();
-            //SendMsgDummy();
+            clock += gameTime.ElapsedGameTime;
+            if (clock.TotalSeconds >= 20)
+            {                
+                NextPlayer();
+            }
+
+            if (currentPlayer.PeerId == Game1.main_console.PeerId)
+            {
+                ProcessKeyboard();
+            }
             if (rocketFlying)
             {
                 UpdateRocket();
@@ -408,7 +413,7 @@ namespace GunBond_Client.GameStates
             switch (gamestate)
             {
                 case GameState.Play:
-                    if (numberOfPlayerAlive == 1)
+                    if (teamA.FindIndex(fpeer => fpeer.IsAlive == true) == -1 || teamB.FindIndex(fpeer => fpeer.IsAlive == true) == -1)
                     {
                         gamestate = GameState.GameOver;
                     }
@@ -419,6 +424,7 @@ namespace GunBond_Client.GameStates
                     if (mouseState.X > 300 && mouseState.X < 500 && mouseState.Y < 400 && mouseState.Y > 250 && mouseState.LeftButton == ButtonState.Pressed && prev.LeftButton == ButtonState.Released)
                     {
                         //gamestate = GameState.BackToRoom;                        
+                        Game1.main_console.Room.Reset();
                         DrawableGameState state = new RoomState(previousState, gameStateService, guiService, inputService, graphics, Content);
                         gameStateService.Switch(state);
                     }
@@ -429,50 +435,72 @@ namespace GunBond_Client.GameStates
             }
 
             prev = Mouse.GetState();
-
-            Game1.main_console.GameEvent += ProcessMessages;
+            //if(clock%20 == 0)
+            //{
+            //    Game1.main_console.GameEvent += ProcessMessages;
+            //    if (clock == 480)
+            //    {
+            //        clock = 1;
+            //    }
+            //}       
         }
 
 		private void ProcessMessages(Message msg)
         {
+            Logger.WriteLine("MAAAAAAAAASSSSSSSSSUU");
             float xPos; // x position
             float yPos; // y position
             float power; // power
             float angle; // angle
-            float damage; // damage
+            float life; // damage
 
             bool isRocketFlying;
             int PeerID;
-            msg.GetMessageGame(out xPos, out yPos, out angle, out power, out damage, out isRocketFlying, out PeerID);
-            players[currentPlayer].Position.X = xPos;
-            players[currentPlayer].Position.Y = yPos;
-            players[currentPlayer].Power = power;
-            players[currentPlayer].Angle = angle;
+            msg.GetMessageGame(out xPos, out yPos, out angle, out power, out life, out isRocketFlying, out PeerID);
+
+            currentPlayer.Position.X = xPos;
+            currentPlayer.Position.Y = yPos;
+            currentPlayer.Power = power;
+            currentPlayer.Angle = angle;
             rocketFlying = isRocketFlying;
-            rocketDamage = damage;
+            //rocketDamage = damage;
+            currentPlayer.Health = life;
 
-            System.Diagnostics.Debug.WriteLine("-----------------");
-            System.Diagnostics.Debug.WriteLine("players" + currentPlayer + PeerID);
-            System.Diagnostics.Debug.WriteLine(players[currentPlayer].Position.X);
-            System.Diagnostics.Debug.WriteLine(players[currentPlayer].Position.Y);
-            System.Diagnostics.Debug.WriteLine(players[currentPlayer].Power);
-            System.Diagnostics.Debug.WriteLine(players[currentPlayer].Angle);
-            System.Diagnostics.Debug.WriteLine(rocketDamage);
-            System.Diagnostics.Debug.WriteLine("-----------------");
+            if (isRocketFlying)
+            {
+                rocketPosition = currentPlayer.Position;
+                rocketPosition.X += 20;
+                rocketPosition.Y -= 10;
+                rocketAngle = currentPlayer.Angle;
+                Vector2 up = new Vector2(0, -1);
+                Matrix rotMatrix = Matrix.CreateRotationZ(rocketAngle);
+                rocketDirection = Vector2.Transform(up, rotMatrix);
+                rocketDirection *= currentPlayer.Power / 50.0f;
+            }            
+
+            Logger.WriteLine("-----------------");
+            Logger.WriteLine("players" + currentPlayer + PeerID);
+            Logger.WriteLine(currentPlayer.Position.X);
+            Logger.WriteLine(currentPlayer.Position.Y);
+            Logger.WriteLine(currentPlayer.Power);
+            Logger.WriteLine(currentPlayer.Angle);
+            Logger.WriteLine("Rocket status:" + isRocketFlying);
+            Logger.WriteLine(currentPlayer.Health);
+            Logger.WriteLine("-----------------");
         }
 
-		        private void SendMsgDefault()
+		private void SendMsgDefault(bool isFlying)
         {
-            Message m = Message.CreateMessageGame(
-                    players[currentPlayer].Position.X,
-                    players[currentPlayer].Position.Y,
-                    players[currentPlayer].Angle,
-                    players[currentPlayer].Power,
-                    rocketDamage,
-                    false,
-                    currentPlayer);
-            ProcessMessages(m);
+            ProcessMessages(Game1.main_console.SendGame(
+                currentPlayer.Position.X,
+                currentPlayer.Position.Y,
+                currentPlayer.Angle,
+                currentPlayer.Power,
+                currentPlayer.Health,
+                isFlying,
+                currentPlayer.PeerId));
         }
+
         private void UpdateRocket()
         {
             if (rocketFlying)
@@ -481,7 +509,7 @@ namespace GunBond_Client.GameStates
                 Vector2 gravity = new Vector2(0, 1);
                 rocketDirection += gravity / 10.0f;
                 rocketPosition += rocketDirection;
-                rocketAngle = (float)Math.Atan2(rocketDirection.X, -rocketDirection.Y);
+                rocketAngle = (float) Math.Atan2(rocketDirection.X, -rocketDirection.Y);
 
                 // update smoke trails
                 for (int i = 0; i < 5; i++)
@@ -497,10 +525,43 @@ namespace GunBond_Client.GameStates
         private void NextPlayer()
         // increment the currentPlayer value
         {
-            currentPlayer = currentPlayer + 1;
-            currentPlayer = currentPlayer % numberOfPlayers;
-            while (!players[currentPlayer].IsAlive)
-                currentPlayer = ++currentPlayer % numberOfPlayers;
+            if(teamA.FindIndex(fpeer => fpeer.IsAlive == true) == -1)
+            {
+                return;
+            }
+
+            if (teamB.FindIndex(fpeer => fpeer.IsAlive == true) == -1)
+            {
+                return;
+            }
+
+            if (teamA.FindIndex(fpeer => fpeer == currentPlayer) >= 0)
+            {
+                do
+                {
+                    idxB = (idxB + 1) % teamB.Count;
+                    currentPlayer = teamB[idxB];
+                    if (currentPlayer.IsAlive)
+                    {
+                        break;
+                    } 
+                }
+                while (!currentPlayer.IsAlive);
+            }
+            else if (teamB.FindIndex(fpeer => fpeer == currentPlayer) >= 0)
+            {
+                do
+                {
+                    idxA = (idxA + 1) % teamA.Count;
+                    currentPlayer = teamA[idxA];
+                    if (currentPlayer.IsAlive)
+                    {
+                        break;
+                    } 
+                }
+                while (!currentPlayer.IsAlive);
+            }
+            clock = TimeSpan.Zero;
         }
 
         /// <summary>
@@ -549,7 +610,7 @@ namespace GunBond_Client.GameStates
         {
             // for each of our players, check if its still alive. If it is,
             // draw the carriage texture at the players position
-            foreach (PlayerData player in players)
+            foreach (Peer player in Game1.main_console.Room.Members)
             {
                 if (player.IsAlive)
                 {
@@ -557,7 +618,7 @@ namespace GunBond_Client.GameStates
                     int yPos = (int)player.Position.Y;
                     Vector2 cannonOrigin = new Vector2(11, 60);
 
-                    spriteBatch.Draw(player.carriageTexture, player.Position, null, Color.White, 0, new Vector2(0, player.carriageTexture.Height), playerScaling, SpriteEffects.None, 0);
+                    spriteBatch.Draw(player.CarriageTexture, player.Position, null, Color.White, 0, new Vector2(0, player.CarriageTexture.Height), playerScaling, SpriteEffects.None, 0);
                     //spriteBatch.Draw(cannonTexture, new Vector2(xPos + 25, yPos - 20), null, Color.Red, player.Angle, cannonOrigin, 0.7f, SpriteEffects.None, 1);
                 }
             }
@@ -565,7 +626,7 @@ namespace GunBond_Client.GameStates
 
         private void DrawCannon()
         {
-            PlayerData player = players[currentPlayer];
+            Peer player = currentPlayer;
             int xPos = (int)player.Position.X;
             int yPos = (int)player.Position.Y;
             Vector2 cannonOrigin = new Vector2(11, 60);
@@ -574,12 +635,34 @@ namespace GunBond_Client.GameStates
 
         private void DrawText()
         {
-            PlayerData player = players[currentPlayer];
+            Peer player = currentPlayer;
             int currentAngle = (int)MathHelper.ToDegrees(player.Angle);
 
-            spriteBatch.DrawString(font, "Cannon angle: " + currentAngle.ToString(), new Vector2(20, 20), Color.Black);
-            spriteBatch.DrawString(font, "Cannon power: " + player.Power.ToString(), new Vector2(20, 45), Color.White);
-            spriteBatch.DrawString(font, "Life: " + player.Health.ToString(), new Vector2(20, 65), Color.Black);
+            spriteBatch.DrawString(font, "Current Player: " + player.PeerId, new Vector2(20, 20), Color.Black);
+            spriteBatch.DrawString(font, "Cannon angle: " + currentAngle.ToString(), new Vector2(20, 45), Color.Black);
+            spriteBatch.DrawString(font, "Cannon power: " + player.Power.ToString(), new Vector2(20, 70), Color.White);
+            spriteBatch.DrawString(font, "Life: " + player.Health.ToString(), new Vector2(20, 95), Color.Black);
+            spriteBatch.DrawString(font, "Time remaining: " + (20 - clock.TotalSeconds), new Vector2(300, 20), Color.Black);
+            spriteBatch.DrawString(font, "ID: " + Game1.main_console.PeerId, new Vector2(300, 45), Color.Black);
+
+            foreach (var p in teamA)
+            {
+                if (p.IsAlive)
+                {
+                    spriteBatch.DrawString(font, p.PeerId.ToString(), new Vector2(p.Position.X, p.Position.Y - 100), Color.Blue);
+                    spriteBatch.DrawString(font, p.Health.ToString(), new Vector2(p.Position.X, p.Position.Y - 80), Color.Blue);
+                }                
+            }
+
+            foreach (var p in teamB)
+            {
+                if (p.IsAlive)
+                {
+                    spriteBatch.DrawString(font, p.PeerId.ToString(), new Vector2(p.Position.X, p.Position.Y - 100), Color.Red);
+                    spriteBatch.DrawString(font, p.Health.ToString(), new Vector2(p.Position.X, p.Position.Y - 80), Color.Red);
+                }
+            }
+            
         }
 
         private void DrawRocket()
@@ -603,6 +686,7 @@ namespace GunBond_Client.GameStates
 
         private void ProcessKeyboard()
         {
+            //SendMsgDefault();
             KeyboardState keybState = Keyboard.GetState();
 
             //float tempPosX = players[currentPlayer].Position.X;
@@ -613,102 +697,80 @@ namespace GunBond_Client.GameStates
             // menurunkan power dengan huruf Q
             if (keybState.IsKeyDown(Keys.Q))
             {
-                players[currentPlayer].Power -= 1f;
-                SendMsgDefault();
+                currentPlayer.Power -= 1f;
+                SendMsgDefault(false);
             }
 
             if (keybState.IsKeyDown(Keys.W))
             {
-                players[currentPlayer].Power += 1f;
-                SendMsgDefault();
+                currentPlayer.Power += 1f;
+                SendMsgDefault(false);
             }
             // menaikkan angle dengan up arrow
             // mennurunkan angle dengan down arrow
             if (keybState.IsKeyDown(Keys.Down))
             {
-                players[currentPlayer].Angle -= 0.01f;
-                if (players[currentPlayer].Angle > MathHelper.PiOver2)
-                    players[currentPlayer].Angle = -MathHelper.PiOver2;
-                if (players[currentPlayer].Angle < -MathHelper.PiOver2)
-                    players[currentPlayer].Angle = MathHelper.PiOver2;
+                currentPlayer.Angle -= 0.01f;
+                if (currentPlayer.Angle > MathHelper.PiOver2)
+                    currentPlayer.Angle = -MathHelper.PiOver2;
+                if (currentPlayer.Angle < -MathHelper.PiOver2)
+                    currentPlayer.Angle = MathHelper.PiOver2;
 
-                SendMsgDefault();
+                SendMsgDefault(false);
             }
 
             if (keybState.IsKeyDown(Keys.Up))
             {
-                players[currentPlayer].Angle += 0.01f;
-                if (players[currentPlayer].Angle > MathHelper.PiOver2)
-                    players[currentPlayer].Angle = -MathHelper.PiOver2;
-                if (players[currentPlayer].Angle < -MathHelper.PiOver2)
-                    players[currentPlayer].Angle = MathHelper.PiOver2;
+                currentPlayer.Angle += 0.01f;
+                if (currentPlayer.Angle > MathHelper.PiOver2)
+                    currentPlayer.Angle = -MathHelper.PiOver2;
+                if (currentPlayer.Angle < -MathHelper.PiOver2)
+                    currentPlayer.Angle = MathHelper.PiOver2;
 
-                SendMsgDefault();
+                SendMsgDefault(false);
             }
             // menggerakkan karakter ke kiri dan kanan dengan left-right arrow
             if (keybState.IsKeyDown(Keys.Left))
             {
-                players[currentPlayer].Position.X -= 1f;
+                currentPlayer.Position.X -= 1f;
 
-                SendMsgDefault();
+                SendMsgDefault(false);
             }
             if (keybState.IsKeyDown(Keys.Right))
             {
-                players[currentPlayer].Position.X += 1f;
+                currentPlayer.Position.X += 1f;
 
-
-
-
-                SendMsgDefault();
+                SendMsgDefault(false);
             }
 
             if (keybState.IsKeyDown(Keys.PageDown))
             {
-                players[currentPlayer].Power -= 20;
-                if (players[currentPlayer].Power > 500)
-                    players[currentPlayer].Power = 500;
-                if (players[currentPlayer].Power < 0)
-                    players[currentPlayer].Power = 0;
-                SendMsgDefault();
+                currentPlayer.Power -= 20;
+                if (currentPlayer.Power > 500)
+                    currentPlayer.Power = 500;
+                if (currentPlayer.Power < 0)
+                    currentPlayer.Power = 0;
+                SendMsgDefault(false);
             }
             if (keybState.IsKeyDown(Keys.PageUp))
             {
-                players[currentPlayer].Power += 20;
-                if (players[currentPlayer].Power > 500)
-                    players[currentPlayer].Power = 500;
-                if (players[currentPlayer].Power < 0)
-                    players[currentPlayer].Power = 0;
+                currentPlayer.Power += 20;
+                if (currentPlayer.Power > 500)
+                    currentPlayer.Power = 500;
+                if (currentPlayer.Power < 0)
+                    currentPlayer.Power = 0;
 
-                SendMsgDefault();
+                SendMsgDefault(false);
             }
             
             if (keybState.IsKeyDown(Keys.Enter) || keybState.IsKeyDown(Keys.Space))
-            {
-
-                Message m = Message.CreateMessageGame(
-                   players[currentPlayer].Position.X,
-                   players[currentPlayer].Position.Y,
-                   players[currentPlayer].Angle,
-                   players[currentPlayer].Power,
-                   rocketDamage,
-                   true,
-                   currentPlayer);
-                ProcessMessages(m);
+            {                
                 if (rocketFlying != true)
                 {
                     rocketFlying = true;
-                }
-                rocketPosition = players[currentPlayer].Position;
-                rocketPosition.X += 20;
-                rocketPosition.Y -= 10;
-                rocketAngle = players[currentPlayer].Angle;
-                Vector2 up = new Vector2(0, -1);
-                Matrix rotMatrix = Matrix.CreateRotationZ(rocketAngle);
-                rocketDirection = Vector2.Transform(up, rotMatrix);
-                rocketDirection *= players[currentPlayer].Power / 50.0f;
+                    SendMsgDefault(rocketFlying);
+                }                
             }
-        }
-
-        public int PeerID { get; set; }
+        }        
     }
 }

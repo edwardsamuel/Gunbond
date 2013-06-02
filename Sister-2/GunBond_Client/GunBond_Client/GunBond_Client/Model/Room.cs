@@ -41,5 +41,13 @@ namespace Gunbond_Client.Model
             this.Creator = creator;
             this.members = new List<Peer>();
         }
+
+        public void Reset()
+        {
+            foreach (var p in Members)
+            {
+                p.Reset();
+            }
+        }
     }
 }

@@ -182,7 +182,7 @@ namespace GunBond_Client.GameStates
                 {
                     max_player = 8;
                 }
-                if (Game1.main_console.create(roomNameInput.Text, max_player))
+                if (Game1.main_console.CreateRoom(roomNameInput.Text, max_player))
                 {
                     gameStateService.Switch(new RoomState(previousState, gameStateService, guiService, inputService, graphics, content));
                 }

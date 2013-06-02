@@ -19,6 +19,7 @@ using Nuclex.UserInterface;
 using Nuclex.UserInterface.Controls;
 using Nuclex.Input;
 using Nuclex.Input.Devices;
+using Gunbond_Client;
 
 namespace GunBond_Client.GameStates
 {
@@ -136,7 +137,7 @@ namespace GunBond_Client.GameStates
             usernameInput.Text = usernameInput.Text.Trim();
             if (usernameInput.Text != "")
             {
-                if (Game1.main_console.connect())
+                if (Game1.main_console.ConnectTracker())
                 {
                     DrawableGameState state = new LobbyState(gameStateService, guiService, inputService, graphics, content, usernameInput.Text);
                     gameStateService.Switch(state);

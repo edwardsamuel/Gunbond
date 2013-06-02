@@ -5,7 +5,7 @@
     <ProjectTypeGuids>{6D335F3A-9D43-41b4-9D22-F6F17C4BE596};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
-    <OutputType>WinExe</OutputType>
+    <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>GunBond_Client</RootNamespace>
     <AssemblyName>GunBond_Client</AssemblyName>
@@ -58,6 +58,9 @@
     <UseVSHostingProcess>false</UseVSHostingProcess>
     <PlatformTarget>x86</PlatformTarget>
     <XnaCompressContent>true</XnaCompressContent>
+  </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject>Gunbond_Client.Program</StartupObject>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="LzmaSharp">
@@ -176,7 +179,6 @@
     <Compile Include="GameStates\RoomState.cs" />
     <Compile Include="GunConsole.cs" />
     <Compile Include="Message.cs" />
-    <Compile Include="Model\Constant.cs" />
     <Compile Include="Model\Peer.cs" />
     <Compile Include="Model\Room.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

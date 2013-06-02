@@ -177,9 +177,9 @@ namespace Gunbond_Client
 
         #endregion
 
-
         public delegate void GameHandler(Message m);
         public event GameHandler GameEvent;
+        public event GameHandler StartEvent;
 
         public GunConsole(string fileName)
         {
@@ -203,6 +203,7 @@ namespace Gunbond_Client
 
         public bool ConnectTracker()
         {
+            IPEndPoint ipEndPointListener = null;
             try
             {
                 if (!IsConnected)
@@ -247,10 +248,13 @@ namespace Gunbond_Client
                             Logger.WriteLine("Connection to tracker is successfully established. PeerID: " + PeerId);
 
                             IPAddress ipAddr = (trackerSocket.LocalEndPoint as IPEndPoint).Address;
-                            IPEndPoint ipEndPointListener = new IPEndPoint(ipAddr, Configuration.ListenPort);
+                            ipEndPointListener = new IPEndPoint(ipAddr, Configuration.ListenPort);
                             SocketPermission permissionListener = new SocketPermission(NetworkAccess.Accept, TransportType.Tcp, "", Configuration.ListenPort);
 
                             listenerSocket = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+
+
+                            Logger.WriteLine("---- " + ipEndPointListener);
                             listenerSocket.Bind(ipEndPointListener);
 
                             permission.Demand();
@@ -498,7 +502,7 @@ namespace Gunbond_Client
             }
         }
 
-        public void Quit()
+        public bool Quit()
         {
             try
             {
@@ -522,107 +526,105 @@ namespace Gunbond_Client
                         nextPeerSocket.Close();
                         nextPeerSocket = null;
                         listenerSocket.Disconnect(true);
+                        return true;
                     }
                     else
                     {
                         Logger.WriteLine("Quit is prohibited");
+                        return false;
                     }
                 }
+                return false;
             }
             catch (Exception exc)
             {
                 Console.WriteLine(exc.ToString());
+                return false;
             }
         }
 
         #region Keep Alive Thread
         private void SendAliveTracker()
         {
-            //try
-            //{
-            //    while (true)
-            //    {
-            //        Logger.WriteLine("SendAliveTracker");
-            //        Message mes = Message.CreateMessageKeepAlive(PeerId);
-            //        byte[] buffer = new byte[1024];
-
-            //        lock (trackerPaddle)
-            //        {
-            //            trackerSocket.Send(mes.data, 0, mes.data.Length, SocketFlags.None);
-            //            trackerSocket.Receive(buffer, 0, buffer.Length, SocketFlags.None);
-            //        }
-
-            //        Message response = new Message(buffer);
-            //        if (response.GetMessageType() == Message.MessageType.KeepAlive)
-            //        {
-            //            Logger.WriteLine("KeepAlive success.");
-            //            Thread.Sleep(Configuration.MaxTimeout / 10);
-            //        }
-            //        else
-            //        {
-            //            Logger.WriteLine("Message KeepAlive has not been received.");
-            //        }
-            //        Logger.WriteLine();
-            //    }
-            //}
-            //catch (Exception)
-            //{
-            //    lock (trackerPaddle)
-            //    {
-            //        if (trackerSocket == null)
-            //        {
-            //            Logger.WriteLine("Connection terminated");
-            //            IsConnected = false;
-            //        }
-            //    }
-            //}
-        }
-
-        private void SendAliveNextPeer()
-        {
             try
             {
                 while (true)
                 {
-                    Logger.WriteLine("SendAliveNextPeer");
+                    Logger.WriteLine("SendAliveTracker");
+                    Message mes = Message.CreateMessageKeepAlive(PeerId);
                     byte[] buffer = new byte[1024];
 
-                    lock (nextPeerPaddle)
+                    lock (trackerPaddle)
                     {
-                        if (nextPeerSocket == null)
-                        {
-                            Thread.Sleep(Configuration.MaxTimeout / 2);
-                            continue;
-                        }
-
-                        Message mes = Message.CreateMessageKeepAlive(PeerId);
-                        nextPeerSocket.Send(mes.data, 0, mes.data.Length, SocketFlags.None);
-                        nextPeerSocket.Receive(buffer, 0, buffer.Length, SocketFlags.None);
+                        trackerSocket.Send(mes.data, 0, mes.data.Length, SocketFlags.None);
+                        trackerSocket.Receive(buffer, 0, buffer.Length, SocketFlags.None);
                     }
 
                     Message response = new Message(buffer);
                     if (response.GetMessageType() == Message.MessageType.KeepAlive)
                     {
-                        Logger.WriteLine("KeepAlive to next peer success.");
-                        Thread.Sleep(Configuration.MaxTimeout / 2);
+                        Logger.WriteLine("KeepAlive success.");
+                        Thread.Sleep(Configuration.MaxTimeout / 10);
                     }
                     else
                     {
-                        Logger.WriteLine("Message KeepAlive reply from next peer has not been received.");
-                        lock (nextPeerPaddle)
-                        {
-                            Logger.WriteLine("Closing connection " + (nextPeerSocket.RemoteEndPoint as IPEndPoint).Address + ":" + (nextPeerSocket.RemoteEndPoint as IPEndPoint).Port);
-                            nextPeerSocket.Close();
-                        }
-                        break;
+                        Logger.WriteLine("Message KeepAlive has not been received.");
                     }
                     Logger.WriteLine();
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                Logger.WriteLine(e.Message);
+                lock (trackerPaddle)
+                {
+                    if (trackerSocket == null)
+                    {
+                        Logger.WriteLine("Connection terminated");
+                        IsConnected = false;
+                    }
+                }
             }
+        }
+
+        private void SendAliveNextPeer()
+        {
+            //try
+            //{
+            //    while (true)
+            //    {
+            //        Logger.WriteLine("SendAliveNextPeer");
+            //        byte[] buffer = new byte[1024];
+
+            //        lock (nextPeerPaddle)
+            //        {
+            //            Message mes = Message.CreateMessageKeepAlive(PeerId);
+            //            nextPeerSocket.Send(mes.data, 0, mes.data.Length, SocketFlags.None);
+            //            nextPeerSocket.Receive(buffer, 0, buffer.Length, SocketFlags.None);
+            //        }
+
+            //        Message response = new Message(buffer);
+            //        if (response.GetMessageType() == Message.MessageType.KeepAlive)
+            //        {
+            //            Logger.WriteLine("KeepAlive to next peer success.");
+            //            Thread.Sleep(Configuration.MaxTimeout / 2);
+            //        }
+            //        else
+            //        {
+            //            Logger.WriteLine("Message KeepAlive reply from next peer has not been received.");
+            //            lock (nextPeerPaddle)
+            //            {
+            //                Logger.WriteLine("Closing connection " + (nextPeerSocket.RemoteEndPoint as IPEndPoint).Address + ":" + (nextPeerSocket.RemoteEndPoint as IPEndPoint).Port);
+            //                nextPeerSocket.Close();
+            //            }
+            //            break;
+            //        }
+            //        Logger.WriteLine();
+            //    }
+            //}
+            //catch (Exception e)
+            //{
+            //    Logger.WriteLine(e.Message);
+            //}
         }
         #endregion
 
@@ -699,16 +701,24 @@ namespace Gunbond_Client
                 object[] obj = new object[2];
                 obj = (object[])target.AsyncState;
 
-                byte[] buffer = (byte[]) obj[0];
-                handler = (Socket) obj[1];
+                byte[] buffer = (byte[])obj[0];
+                handler = (Socket)obj[1];
 
-                Logger.WriteLine("ReceiveCallback from " + (handler.RemoteEndPoint as IPEndPoint).Address + ":" + (handler.RemoteEndPoint as IPEndPoint).Port);
+                //Logger.WriteLine("ReceiveCallback from " + (handler.RemoteEndPoint as IPEndPoint).Address + ":" + (handler.RemoteEndPoint as IPEndPoint).Port);
+
+                Logger.WriteLine("Message from " + (handler.RemoteEndPoint as IPEndPoint).Address + ":" + (handler.RemoteEndPoint as IPEndPoint).Port);
 
                 bool quit = false;
 
                 int bytesRead = handler.EndReceive(target);
                 if (bytesRead > 0)
                 {
+                    Logger.WriteLine("Message to " + (handler.LocalEndPoint as IPEndPoint).Address + ":" + (handler.LocalEndPoint as IPEndPoint).Port);
+                    Logger.WriteLine("Message content: \n----------------------------\n");
+                    StringBuilder hex = new StringBuilder(buffer.Length * 2);
+                    for (int i = 0; i < bytesRead; i++) hex.AppendFormat("{0:x2}", buffer[i]);
+                    Logger.WriteLine(hex + "\n----------------------------");
+                   
                     Message request = new Message(buffer);
                     Message response;
 
@@ -724,8 +734,9 @@ namespace Gunbond_Client
                             request.GetHandshakePeerCreator(out newPeerId, out newPeerListenPort);
                             Room.Members.Add(new Peer(newPeerId, newPeerIp, newPeerListenPort));
 
-                            Logger.WriteLine("Peer ID : " + newPeerId);
-                            Logger.WriteLine("Peer IP : " + newPeerIp + ":" + newPeerListenPort);
+                            //Logger.WriteLine("Peer ID : " + newPeerId);
+                            //Logger.WriteLine("Peer IP : " + newPeerIp + ":" + newPeerListenPort);
+                            Logger.WriteLine("Handshake from:" + newPeerIp + "is sent to " + (handler.LocalEndPoint as IPEndPoint).Address);
 
                             // Send SUCCESS message
                             response = Message.CreateMessageSuccess();
@@ -803,7 +814,7 @@ namespace Gunbond_Client
                         Logger.WriteLine("NewMember");
                         if (IsCreator)
                         {
-                            Logger.WriteLine("NewMember has been received by peer creator");
+                            Logger.WriteLine("NEW MEMBER has been received by peer creator");
                             Logger.WriteLine("Closing connection from " + (handler.RemoteEndPoint as IPEndPoint).Address + ":" + (handler.RemoteEndPoint as IPEndPoint).Port);
                             handler.Close();
                             quit = true;
@@ -818,6 +829,8 @@ namespace Gunbond_Client
                             Room.Members.Add(new Peer(newPeerId, newPeerIp, newPeerListenPort));
 
                             Logger.WriteLine("Sending NEW MEMBER to nextPeerSocket: " + (nextPeerSocket.RemoteEndPoint as IPEndPoint).Address + ":" + (nextPeerSocket.RemoteEndPoint as IPEndPoint).Port);
+                            Logger.WriteLine("NEW MEMBER has been sent from: " + (nextPeerSocket.LocalEndPoint as IPEndPoint).Address + ":" + (nextPeerSocket.LocalEndPoint as IPEndPoint).Port);
+                            
                             response = request;
                             nextPeerSocket.Send(response.data, 0, response.data.Length, SocketFlags.None);
 
@@ -854,8 +867,31 @@ namespace Gunbond_Client
                         Room = room;
                         #endregion
                     }
+                    else if (requestType == Message.MessageType.Start)
+                    {
+                        #region Start
+                        int peerId;
+                        string roomId;
+                        List<int> teamA;
+                        List<int> teamB;
+
+                        request.GetStart(out peerId, out roomId, out teamA, out teamB);
+
+                        if (PeerId != peerId)
+                        {
+                            if (StartEvent != null)
+                            {
+                                StartEvent(request);
+                            }
+
+                            response = request;
+                            nextPeerSocket.Send(response.data, 0, response.data.Length, SocketFlags.None);
+                        }
+                        #endregion
+                    }
                     else if (requestType == Message.MessageType.Quit)
                     {
+                        #region Quit
                         int peerId;
                         request.GetQuit(out peerId);
                         Peer peer = Room.Members.Find(fpeer => fpeer.PeerId == peerId);
@@ -955,12 +991,22 @@ namespace Gunbond_Client
                             }
                         }
                         Room.Members.Remove(peer);
+                        #endregion
                     }
-                    else
+                    else if (requestType == Message.MessageType.InGame)
                     {
-                        if (GameEvent != null)
+                        float x, y, angle, power, damage;
+                        bool isRocketFlying;
+                        int peerId;
+                        request.GetMessageGame(out x, out y, out angle, out power, out damage, out isRocketFlying, out peerId);
+                        if (peerId != PeerId)
                         {
-                            GameEvent(request);
+                            if (GameEvent != null)
+                            {
+                                GameEvent(request);
+                            }
+                            response = request;
+                            nextPeerSocket.Send(response.data, 0, response.data.Length, SocketFlags.None);
                         }
                     }
                 }
@@ -1035,13 +1081,43 @@ namespace Gunbond_Client
         }
         #endregion
 
-        public void SEND_START(string str)
+        public Message StartGame()
         {
-            Message m = Message.CreateMessageStart(PeerId, str);
+            List<int> teamA = new List<int>();
+            List<int> teamB = new List<int>();
+            Random randomizer = new Random();
+
+            while (teamA.Count < Room.Members.Count / 2)
+            {
+                Peer p = Room.Members[randomizer.Next(0, Room.Members.Count)];
+                if (teamA.FindIndex(fpeer => fpeer == p.PeerId) == -1)
+                {
+                    teamA.Add(p.PeerId);
+                }
+            }
+
+            foreach (Peer p in Room.Members)
+            {
+                if (teamA.FindIndex(fpeer => fpeer == p.PeerId) == -1)
+                {
+                    teamB.Add(p.PeerId);
+                }
+            }
+            Message m = Message.CreateMessageStart(PeerId, Room.RoomId, teamA, teamB);
+
             lock (nextPeerPaddle)
             {
                 nextPeerSocket.Send(m.data, 0, m.data.Length, SocketFlags.None);
             }
+            return m;
         }
+
+        public Message SendGame(float x, float y, float angle, float power, float life, bool isRocketFlying, int peerId)
+        {
+            Message m = Message.CreateMessageGame(x, y, angle, power, life, isRocketFlying, peerId);
+            nextPeerSocket.Send(m.data, 0, m.data.Length, SocketFlags.None);
+            return m;
+        }
+
     }
 }

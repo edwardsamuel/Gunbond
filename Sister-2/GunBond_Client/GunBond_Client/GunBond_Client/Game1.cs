@@ -54,7 +54,7 @@ namespace GunBond_Client
 
         public static String cursorPath;
 
-        public static readonly GunConsole main_console = new GunConsole("peer.xml");
+        public static GunConsole main_console;
 
         public Game1()
         {
@@ -163,7 +163,7 @@ namespace GunBond_Client
 
         protected override void OnExiting(object sender, EventArgs args)
         {
-            main_console.close();
+            main_console.Quit();
             base.OnExiting(sender, args);            
         }
 
